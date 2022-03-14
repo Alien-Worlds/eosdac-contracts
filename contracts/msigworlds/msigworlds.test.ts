@@ -1008,37 +1008,42 @@ describe('msigworlds', () => {
 
 async function configureAuths() {
   await UpdateAuth.execUpdateAuth(
+    [{ actor: msigowned.name, permission: 'active' }],
+    msigowned.name,
+    'xfer',
+    'active',
+    UpdateAuth.AuthorityToSet.explicitAuthorities(
+      2,
+      [
+        { permission: { actor: owner1.name, permission: 'active' }, weight: 1 },
+        { permission: { actor: owner2.name, permission: 'active' }, weight: 1 },
+      ],
+      [],
+      []
+    )
+  );
+
+  await UpdateAuth.execUpdateAuth(
     [{ actor: msigowned.name, permission: 'owner' }],
     msigowned.name,
     'active',
     'owner',
     UpdateAuth.AuthorityToSet.explicitAuthorities(
-      3,
+      1,
       [
         {
           permission: {
             actor: msigworlds.account.name,
             permission: 'active',
           },
-          weight: 3,
+          weight: 1,
         },
-        { permission: { actor: owner1.name, permission: 'active' }, weight: 2 },
-        { permission: { actor: owner2.name, permission: 'active' }, weight: 1 },
+        {
+          permission: { actor: msigowned.name, permission: 'xfer' },
+          weight: 1,
+        },
       ],
-      [
-        //   {
-        //     key: owner1.publicKey,
-        //     weight: 2,
-        //   },
-        //   {
-        //     key: owner2.publicKey,
-        //     weight: 1,
-        //   },
-        // ].sort((a, b) => {
-        //   // ensure keys are sorted alphabetically to avoid invalid auth error.
-        //   return a.key < b.key ? -1 : 1;
-        // }),
-      ],
+      [],
       []
     )
   );

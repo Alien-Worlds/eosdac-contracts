@@ -401,6 +401,7 @@ describe('Dacproposals', () => {
       context('proposal in pending approval state', async () => {
         context('proposal_approve vote', async () => {
           it('should succeed', async () => {
+            await sleep(500);
             await chai.expect(
               shared.dacproposals_contract.voteprop(
                 propDacCustodians[0].name,
@@ -430,30 +431,6 @@ describe('Dacproposals', () => {
                 propDacCustodians[0].name,
                 newpropid,
                 VoteType.vote_deny,
-                dacId,
-                {
-                  auths: [
-                    {
-                      actor: propDacCustodians[0].name,
-                      permission: 'active',
-                    },
-                    {
-                      actor: shared.auth_account.name,
-                      permission: 'active',
-                    },
-                  ],
-                }
-              )
-            ).to.eventually.be.fulfilled;
-          });
-        });
-        context('proposal_approve vote', async () => {
-          it('should succeed', async () => {
-            await chai.expect(
-              shared.dacproposals_contract.voteprop(
-                propDacCustodians[0].name,
-                newpropid,
-                VoteType.vote_approve,
                 dacId,
                 {
                   auths: [
