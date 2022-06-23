@@ -23,7 +23,8 @@ CONTRACT stakevote : public contract {
         uint32_t time_multiplier = (uint32_t)100000000;
 
         static config_item get_current_configs(eosio::name account, eosio::name scope) {
-            return config_container(account, scope.value).get_or_default(config_item());
+            check(config_container(account, scope.value).exists(), "Stake config not set.");
+            return config_container(account, scope.value).get();
         }
 
         void save(eosio::name account, eosio::name scope, eosio::name payer = same_payer) {
@@ -44,4 +45,17 @@ CONTRACT stakevote : public contract {
     ACTION stakeobsv(vector<account_stake_delta> stake_deltas, name dac_id);
     ACTION balanceobsv(vector<account_balance_delta> balance_deltas, name dac_id);
     ACTION updateconfig(config_item new_config, name dac_id);
+
+    ACTION clearweights(uint16_t batch_size, name dac_id);
+    ACTION collectwts(uint16_t batch_size, uint32_t unstake_time, name dac_id);
+
+    struct [[eosio::table("stakes"), eosio::contract("eosdactokens")]] stake_info {
+        name  account;
+        asset stake;
+
+        uint64_t primary_key() const {
+            return account.value;
+        }
+    };
+    using stakes_table = multi_index<"stakes"_n, stake_info>;
 };
