@@ -70,7 +70,6 @@ void multisig::propose(name proposer, name proposal_name, std::vector<permission
     const auto pkd_trans = std::vector<char>(trx_pos, trx_pos + size);
 
     proptable.emplace(proposer, [&](proposal &prop) {
-        prop.id                 = next_id(dac_id);
         prop.proposal_name      = proposal_name;
         prop.proposer           = proposer;
         prop.packed_transaction = pkd_trans;
@@ -315,14 +314,6 @@ void multisig::blockaction(name account, name action, name dac_id) {
         a.account = account;
         a.action  = action;
     });
-}
-
-uint64_t multisig::next_id(name dac_id) {
-    auto s = serial_singleton{_self, dac_id.value};
-    auto x = s.get_or_create(get_self(), serial());
-    x.id++;
-    s.set(x, get_self());
-    return x.id;
 }
 
 transaction_header get_trx_header(const char *ptr, size_t sz) {

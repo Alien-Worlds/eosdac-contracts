@@ -349,7 +349,6 @@ describe('msigworlds', () => {
             expect(prop.proposer).to.equal(owner1.name);
             expect(prop.state).to.equal(0);
             expect(prop.proposal_name).to.equal('prop1');
-            expect(prop.id).to.equal(1);
             modDate = prop.modified_date;
           });
           it('should populate approvals table', async () => {
@@ -811,7 +810,6 @@ describe('msigworlds', () => {
       });
       const prop = res.rows[0];
       expect(prop.proposal_name).to.equal('prop2');
-      expect(prop.id).to.equal(2);
     });
     context('with wrong auth', async () => {
       it('should fail with auth error', async () => {
@@ -910,7 +908,6 @@ describe('msigworlds', () => {
         });
         const prop = res.rows[0];
         expect(prop.proposal_name).to.equal('propexp');
-        expect(prop.id).to.equal(3);
       });
       it('should fail with expired error', async () => {
         await assertEOSErrorIncludesMessage(
@@ -990,7 +987,6 @@ describe('msigworlds', () => {
         });
         const prop = res.rows[0];
         expect(prop.proposal_name).to.equal('propgood');
-        expect(prop.id).to.equal(4);
       });
 
       it('should update approvals table', async () => {
@@ -1101,7 +1097,6 @@ describe('msigworlds', () => {
         });
         const prop = res.rows[0];
         expect(prop.proposal_name).to.equal('propclean');
-        expect(prop.id).to.equal(5);
       });
       it('shoul fail with wrong state error', async () => {
         await assertEOSErrorIncludesMessage(
