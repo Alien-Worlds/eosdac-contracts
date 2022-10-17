@@ -72,7 +72,7 @@ void daccustodian::allocateCustodians(bool early_election, name dac_id) {
     name             auth_account = dacdir::dac_for_id(dac_id).owner;
     auto             byvotes      = registered_candidates.get_index<"bydecayed"_n>();
 
-    auto cand_itr = byvotes.begin();
+    auto cand_itr = byvotes.rbegin();
 
     int32_t electcount            = globals.get_numelected();
     uint8_t currentCustodianCount = 0;
@@ -96,7 +96,7 @@ void daccustodian::allocateCustodians(bool early_election, name dac_id) {
     }
 
     while (currentCustodianCount < electcount) {
-        check(cand_itr != byvotes.end() && cand_itr->total_vote_power > 0,
+        check(cand_itr != byvotes.rend() && cand_itr->total_vote_power > 0,
             "ERR::NEWPERIOD_NOT_ENOUGH_CANDIDATES::There are not enough eligible candidates to run new period without causing potential lock out permission structures for this DAC.");
 
         //  If the candidate is inactive or is already a custodian skip to the next one.
