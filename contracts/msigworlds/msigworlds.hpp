@@ -63,6 +63,16 @@ struct [[eosio::table("approvals"), eosio::contract("msigworlds")]] approvals_in
 };
 typedef eosio::multi_index<"approvals"_n, approvals_info> approvals;
 
+struct [[eosio::table("disapprovals"), eosio::contract("msigworlds")]] disapprovals_info {
+    name                  proposal_name;
+    std::vector<approval> disapprovals;
+
+    uint64_t primary_key() const {
+        return proposal_name.value;
+    }
+};
+typedef eosio::multi_index<"disapprovals"_n, disapprovals_info> disapprovals;
+
 struct [[eosio::table("invals"), eosio::contract("msigworlds")]] invalidation {
     name       account;
     time_point last_invalidation_time;

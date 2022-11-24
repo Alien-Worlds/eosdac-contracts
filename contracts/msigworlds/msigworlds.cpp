@@ -180,7 +180,8 @@ void multisig::_unapprove(
 
     if (approvals_previously_granted) {
         apptable.modify(apps_it, same_payer, [&](auto &a) {
-            a.requested_approvals.push_back(approval{level, current_time_point()});
+            // Don't push this to requested approvals since it may never have been there.
+            // a.requested_approvals.push_back(approval{level, current_time_point()});
             a.provided_approvals.erase(itr);
         });
     }
@@ -204,6 +205,25 @@ void multisig::_unapprove(
     proptable.modify(prop_itr, same_payer, [&](proposal &p) {
         p.modified_date = current_time_point();
     });
+
+    const auto this_disapproval = approval{level, current_time_point()};
+
+    disapprovals apptable(get_self(), dac_id.value);
+    auto         apps_it = apptable.find(proposal_name.value);
+
+    if (apps_it == apptable.end()) {
+        apptable.emplace(level.actor, [&](auto &a) {
+            a.disapprovals = {this_disapproval};
+        });
+    } else {
+        apptable.modify(apps_it, same_payer, [&](auto &a) {
+            const bool is_duplicate =
+                std::find(a.disapprovals.begin(), a.disapprovals.end(), this_disapproval) != a.disapprovals.end();
+            check(!is_duplicate, "ERR::DUPLICATE_DISAPPROVAL::Disapproval by %s@%s already exists.", level.actor,
+                level.permission);
+            a.disapprovals.push_back(this_disapproval);
+        });
+    }
 }
 
 void multisig::checkauth(name proposal_name, name dac_id) {
