@@ -8,6 +8,7 @@
 #include <eosio/singleton.hpp>
 #include <eosio/time.hpp>
 
+#include "aw_multi_index.hpp"
 #include "config.hpp"
 #include "daccustodian_shared.hpp"
 #include "eosdactokens_shared.hpp"
@@ -129,6 +130,39 @@ namespace eosdac {
         eosio::indexed_by<"bydecayed"_n, eosio::const_mem_fun<custodian, uint64_t, &custodian::by_decayed_votes>>,
 #endif
         eosio::indexed_by<"byreqpay"_n, eosio::const_mem_fun<custodian, uint64_t, &custodian::by_requested_pay>>>;
+
+    struct [[eosio::table("custodians"), eosio::contract("daccustodian")]] custodian_old {
+        eosio::name           cust_name;
+        eosio::asset          requestedpay;
+        uint64_t              total_vote_power;
+        uint64_t              rank;
+        uint32_t              number_voters;
+        eosio::time_point_sec avg_vote_time_stamp;
+
+        uint64_t primary_key() const {
+            return cust_name.value;
+        }
+
+        uint64_t by_votes_rank() const {
+            return std::numeric_limits<uint64_t>::max() - total_vote_power;
+        }
+
+        uint64_t by_decayed_votes() const {
+            return std::numeric_limits<uint64_t>::max() - rank;
+        }
+
+        uint64_t by_requested_pay() const {
+            return S{requestedpay.amount}.to<uint64_t>();
+        }
+    };
+
+    using custodians_old_table = eosio::aw_multi_index<"custodians"_n, custodian_old,
+        eosio::indexed_by<"byvotesrank"_n,
+            eosio::const_mem_fun<custodian_old, uint64_t, &custodian_old::by_votes_rank>>,
+        eosio::indexed_by<"bydecayed"_n,
+            eosio::const_mem_fun<custodian_old, uint64_t, &custodian_old::by_decayed_votes>>,
+        eosio::indexed_by<"byreqpay"_n,
+            eosio::const_mem_fun<custodian_old, uint64_t, &custodian_old::by_requested_pay>>>;
 
     struct [[eosio::table("custodians2"), eosio::contract("daccustodian")]] custodian2 {
         eosio::name           cust_name;
@@ -539,6 +573,8 @@ namespace eosdac {
 #ifdef MIGRATION_STAGE_2
         ACTION migrate2(const name dac_id);
 #endif
+        ACTION cleanold(const name dac_id);
+
 #ifdef DEBUG
         ACTION migratestate(const name &dac_id);
         ACTION resetvotes(const name &voter, const name &dac_id);

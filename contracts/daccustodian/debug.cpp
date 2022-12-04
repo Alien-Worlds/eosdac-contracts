@@ -63,3 +63,13 @@ void daccustodian::clearcands(const name &dac_id) {
         cand = candidates.erase(cand);
     }
 }
+
+void daccustodian::clearoldcust(const name &dac_id) {
+    require_auth(get_self());
+
+    auto custodians = custodians_table{get_self(), dac_id.value};
+    auto itr        = custodians.begin();
+    while (itr != custodians.end()) {
+        internal_use_do_not_use::db_remove_i64(objitem.__primary_itr);
+    }
+}

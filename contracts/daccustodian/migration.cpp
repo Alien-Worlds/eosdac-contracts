@@ -33,3 +33,11 @@ ACTION daccustodian::migrate2(const name dac_id) {
     }
 }
 #endif
+
+ACTION daccustodian::cleanold(const name dac_id) {
+    auto custodians = custodians_old_table{get_self(), dac_id.value};
+    auto itr        = custodians.begin();
+    while (custodians.begin() != custodians.end()) {
+        custodians.blind_erase_begin();
+    }
+}
