@@ -742,22 +742,28 @@ describe('Daccustodian', () => {
             total_vote_power: 0,
             number_voters: 0,
           });
-          chai.expect(cand.avg_vote_time_stamp.getTime()).to.equal(0);
+          chai.expect(cand.avg_vote_time_stamp).to.equal(0);
         }
       });
     });
     context('After voting', async () => {
       it('only candidates with votes have total_vote_power values 1', async () => {
         await vote_and_check(dacId, regMembers[0], cands[0]);
-        await sleep(1000);
-
         await vote_and_check(dacId, regMembers[0], cands[0]);
-        await sleep(1000);
-
         await vote_and_check(dacId, regMembers[1], cands[0]);
-        await sleep(1000);
-
         await vote_and_check(dacId, regMembers[0], cands[0]);
+        await vote_and_check(dacId, regMembers[0], cands.slice(1, 3));
+        await vote_and_check(dacId, regMembers[1], cands.slice(1, 3));
+        await vote_and_check(dacId, regMembers[2], cands.slice(1, 3));
+        await vote_and_check(dacId, regMembers[2], []);
+        await vote_and_check(dacId, regMembers[0], cands.slice(2, 4));
+        await vote_and_check(dacId, regMembers[0], []);
+        await vote_and_check(dacId, regMembers[2], cands.slice(1, 3));
+        await vote_and_check(dacId, regMembers[2], cands.slice(1, 3));
+        await vote_and_check(dacId, regMembers[0], cands.slice(1, 3));
+        await vote_and_check(dacId, regMembers[2], cands.slice(1, 2));
+        await vote_and_check(dacId, regMembers[1], cands.slice(2, 3));
+        await vote_and_check(dacId, regMembers[1], []);
       });
     });
   });
@@ -3571,9 +3577,13 @@ async function get_expected_avg_vote_time_stamp(
     (await get_balance(shared.dac_token_contract, voter, token_name)) * 10000;
 
   // get avg_vote_time_stamp of candidate
-  res = await shared.daccustodian_contract.candidatesTable({ scope: dacId });
+  res = await shared.daccustodian_contract.candidatesTable({
+    scope: dacId,
+    limit: 100,
+  });
+
   const mycand = res.rows.find((x) => x.candidate_name == candidate.name);
-  let avg_vote_time_stamp = mycand.avg_vote_time_stamp;
+  let avg_vote_time_stamp = parseFloat(mycand.avg_vote_time_stamp);
   let total_vote_power = mycand.total_vote_power;
 
   // see if there is an exisiting vote and deduct
@@ -3582,60 +3592,62 @@ async function get_expected_avg_vote_time_stamp(
     limit: 1,
     lowerBound: voter.name,
   });
-  const ourvote = res.rows.find((x) => x.voter == voter.name);
+  const ourvote = res.rows.find(
+    (x) => x.voter == voter.name && x.candidates.includes(candidate.name)
+  );
   const now = new Date();
 
-  // reduce
+  // reduce any existing vote
   if (ourvote) {
     total_vote_power -= vote_weight;
-    if (total_vote_power == 0) {
-      avg_vote_time_stamp = new Date(0);
-    } else {
-      const delta_milliseconds =
-        ((ourvote.vote_time_stamp.getTime() - avg_vote_time_stamp.getTime()) *
-          (-1 * vote_weight)) /
-        total_vote_power;
-      let new_milliseconds = Math.floor(
-        avg_vote_time_stamp.getTime() + delta_milliseconds
-      );
-
-      avg_vote_time_stamp = new Date(new_milliseconds);
-    }
+    avg_vote_time_stamp -=
+      Math.floor(ourvote.vote_time_stamp.getTime() / 1000) * vote_weight;
   }
-  total_vote_power += vote_weight;
-  const delta_milliseconds =
-    ((now.getTime() - avg_vote_time_stamp.getTime()) * vote_weight) /
-    total_vote_power;
-  let new_milliseconds = Math.floor(
-    avg_vote_time_stamp.getTime() + delta_milliseconds
-  );
 
-  return new Date(new_milliseconds);
+  // add the new vote
+  total_vote_power += vote_weight;
+  avg_vote_time_stamp += Math.floor(now.getTime() / 1000) * vote_weight;
+
+  return avg_vote_time_stamp;
 }
 
-async function vote_and_check(dacId, voter, candidate) {
-  const expected_avg_vote_time_stamp = await get_expected_avg_vote_time_stamp(
-    dacId,
-    voter,
-    candidate
-  );
-  await shared.daccustodian_contract.votecust(
-    voter.name,
-    [candidate.name],
-    dacId,
-    { from: voter }
-  );
-  let votedCandidateResult = await shared.daccustodian_contract.candidatesTable(
-    {
-      scope: dacId,
-      limit: 1,
-      lowerBound: candidate.name,
-    }
-  );
-  chai
-    .expect(votedCandidateResult.rows[0].candidate_name)
-    .to.equal(candidate.name);
-  chai
-    .expect(votedCandidateResult.rows[0].avg_vote_time_stamp)
-    .to.closeToTime(expected_avg_vote_time_stamp, 1);
+async function vote_and_check(dacId, voter, candidates) {
+  await sleep(1000);
+  if (!Array.isArray(candidates)) {
+    candidates = [candidates];
+  }
+
+  let expected_avg_cand = {};
+  for (const candidate of candidates) {
+    let x = await get_expected_avg_vote_time_stamp(dacId, voter, candidate);
+    console.log(
+      `OHAI candidate ${candidate.name} expected avg_vote_time_stamp ${x}`
+    );
+    chai.expect(x).to.not.be.undefined;
+    expected_avg_cand[candidate.name] = x;
+  }
+  console.log('expected_avg_cand', JSON.stringify(expected_avg_cand, null, 2));
+  for (const candidate of candidates) {
+    await shared.daccustodian_contract.votecust(
+      voter.name,
+      [candidate.name],
+      dacId,
+      { from: voter }
+    );
+    let votedCandidateResult =
+      await shared.daccustodian_contract.candidatesTable({
+        scope: dacId,
+        limit: 1,
+        lowerBound: candidate.name,
+      });
+    chai
+      .expect(votedCandidateResult.rows[0].candidate_name)
+      .to.equal(candidate.name);
+    chai
+      .expect(
+        parseInt(votedCandidateResult.rows[0].avg_vote_time_stamp, 10) /
+          expected_avg_cand[candidate.name]
+      )
+      .to.be.within(0.99999, 1.00001);
+  }
 }
