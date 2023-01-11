@@ -742,7 +742,7 @@ describe('Daccustodian', () => {
             total_vote_power: 0,
             number_voters: 0,
           });
-          chai.expect(cand.avg_vote_time_stamp).to.equal(0);
+          chai.expect(parseFloat(cand.avg_vote_time_stamp)).to.equal(0.0);
         }
       });
     });
@@ -1639,7 +1639,7 @@ describe('Daccustodian', () => {
                 scope: dacId,
                 limit: 100,
                 indexPosition: 6, // bydecayed index
-                keyType: 'i64',
+                keyType: 'float64',
               });
 
               let res2 = await shared.daccustodian_contract.custodians1Table({

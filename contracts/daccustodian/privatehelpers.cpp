@@ -33,14 +33,14 @@ void daccustodian::updateVoteWeight(
     });
 }
 
-uint64_t daccustodian::calculate_avg_vote_time_stamp(
+double daccustodian::calculate_avg_vote_time_stamp(
     const uint64_t avg_vote_time_stamp, const time_point_sec vote_time_stamp, const int64_t weight) {
     auto err = Err{"daccustodian::calculate_avg_vote_time_stamp"};
 
-    const auto current = S{vote_time_stamp.sec_since_epoch()}.to<int128_t>();
-    const auto out     = S{avg_vote_time_stamp}.to<int128_t>() + current * S{weight}.to<int128_t>();
+    const auto current = S{vote_time_stamp.sec_since_epoch()}.to<double>();
+    const auto out     = S{avg_vote_time_stamp}.to<double>() + current * S{weight}.to<double>();
 
-    return out.to<uint64_t>();
+    return out;
 }
 
 void daccustodian::updateVoteWeights(const vector<name> &votes, const time_point_sec vote_time_stamp,
