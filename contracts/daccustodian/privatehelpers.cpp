@@ -27,29 +27,20 @@ void daccustodian::updateVoteWeight(
         }
 
         if (from_voting) {
-            if (c.total_vote_power == 0) {
-                c.avg_vote_time_stamp = time_point_sec(0);
-            } else {
-                c.avg_vote_time_stamp =
-                    calculate_avg_vote_time_stamp(c.avg_vote_time_stamp, vote_time_stamp, weight, c.total_vote_power);
-                check(c.avg_vote_time_stamp <= now(), "avg_vote_time_stamp pushed into the future: %s",
-                    c.avg_vote_time_stamp);
-            }
+            c.avg_vote_time_stamp = calculate_avg_vote_time_stamp(c.avg_vote_time_stamp, vote_time_stamp, weight);
         }
         c.update_index();
     });
 }
 
-time_point_sec daccustodian::calculate_avg_vote_time_stamp(const time_point_sec vote_time_before,
-    const time_point_sec vote_time_stamp, const int64_t weight, const uint64_t total_votes) {
+uint64_t daccustodian::calculate_avg_vote_time_stamp(
+    const uint64_t avg_vote_time_stamp, const time_point_sec vote_time_stamp, const int64_t weight) {
     auto err = Err{"daccustodian::calculate_avg_vote_time_stamp"};
 
-    const auto initial     = S{vote_time_before.sec_since_epoch()}.to<int128_t>();
-    const auto current     = S{vote_time_stamp.sec_since_epoch()}.to<int128_t>();
-    const auto time_delta  = (current - initial);
-    const auto new_seconds = initial + time_delta * S{weight}.to<int128_t>() / S{total_votes}.to<int128_t>();
+    const auto current = S{vote_time_stamp.sec_since_epoch()}.to<int128_t>();
+    const auto out     = S{avg_vote_time_stamp}.to<int128_t>() + current * S{weight}.to<int128_t>();
 
-    return time_point_sec{new_seconds.to<uint32_t>()};
+    return out.to<uint64_t>();
 }
 
 void daccustodian::updateVoteWeights(const vector<name> &votes, const time_point_sec vote_time_stamp,

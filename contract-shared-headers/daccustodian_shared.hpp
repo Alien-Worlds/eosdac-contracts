@@ -31,12 +31,16 @@ namespace eosdac {
 #define TRANSFER_DELAY 60 * 60
 #endif
     struct [[eosio::table("custodians1"), eosio::contract("daccustodian")]] custodian {
-        eosio::name           cust_name;
-        eosio::asset          requestedpay;
-        uint64_t              total_vote_power;
-        uint64_t              rank;
-        uint32_t              number_voters;
-        eosio::time_point_sec avg_vote_time_stamp;
+        eosio::name  cust_name;
+        eosio::asset requestedpay;
+        uint64_t     total_vote_power;
+        uint64_t     rank;
+        uint32_t     number_voters;
+        // #ifdef MIGRATE
+        //         eosio::time_point_sec avg_vote_time_stamp;
+        // #else
+        uint64_t avg_vote_time_stamp;
+        // #endif
 
         uint64_t primary_key() const {
             return cust_name.value;
@@ -64,11 +68,11 @@ namespace eosdac {
         eosio::name           candidate_name;
         eosio::asset          requestedpay;
         uint64_t              rank;
-        uint64_t              gap_filler; // Currently unused, can be recycled in the future
+        uint64_t              avg_vote_time_stamp;
         uint64_t              total_vote_power;
         uint8_t               is_active;
         uint32_t              number_voters;
-        eosio::time_point_sec avg_vote_time_stamp;
+        eosio::time_point_sec gap_filler; // Currently unused, can be recycled in the future
 
         uint64_t calc_decayed_votes_index() const {
             auto       err            = Err{"calc_decayed_votes_index"};
@@ -78,8 +82,7 @@ namespace eosdac {
             const auto log_arg = S{total_vote_power} + S{1ull};
             const auto log     = log2(log_arg.to<double>());
             const auto x =
-                (S{log} + S{avg_vote_time_stamp.sec_since_epoch()}.to<double>() / S{SECONDS_TO_DOUBLE}.to<double>()) *
-                scaling_factor;
+                (S{log} + S{avg_vote_time_stamp}.to<double>() / S{SECONDS_TO_DOUBLE}.to<double>()) * scaling_factor;
             return x.to<uint64_t>();
         }
 
@@ -369,9 +372,9 @@ namespace eosdac {
         void             validateUnstake(name code, name cand, name dac_id);
         void validateUnstakeAmount(const name &code, const name &cand, const asset &unstake_amount, const name &dac_id);
         void validateMinStake(name account, name dac_id);
-        uint16_t       get_budget_percentage(const name &dac_id, const dacglobals &globals);
-        time_point_sec calculate_avg_vote_time_stamp(const time_point_sec vote_time_before,
-            const time_point_sec vote_time_stamp, const int64_t weight, const uint64_t total_votes);
+        uint16_t get_budget_percentage(const name &dac_id, const dacglobals &globals);
+        uint64_t calculate_avg_vote_time_stamp(
+            const uint64_t avg_vote_time_stamp, const time_point_sec vote_time_stamp, const int64_t weight);
         void update_number_of_votes(const vector<name> &oldvotes, const vector<name> &newvotes, const name &dac_id);
     };
 }; // namespace eosdac

@@ -211,7 +211,7 @@ void daccustodian::migraterank(const name &dac_id) {
     for (auto &candidate : candidates) {
         candidates.modify(candidate, same_payer, [&](auto &c) {
             c.update_index();
-            c.gap_filler = 0;
+            c.gap_filler = time_point_sec{0};
         });
     }
 }
