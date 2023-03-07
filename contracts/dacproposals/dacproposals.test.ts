@@ -39,7 +39,7 @@ enum ProposalState {
 const proposalHash = 'jhsdfkjhsdfkjhkjsdf';
 let planet: Account;
 
-describe.only('Dacproposals', () => {
+describe('Dacproposals', () => {
   let otherAccount: Account;
   let proposer1Account: Account;
   let arbitrator: Account;
@@ -55,35 +55,49 @@ describe.only('Dacproposals', () => {
   let eosiotoken: EosioToken;
 
   before(async () => {
+    console.log('ohai 1');
     shared = await SharedTestObjects.getInstance();
+    console.log('ohai 2');
     planet = await AccountManager.createAccount('propplanet');
+    console.log('ohai 3');
 
     await setup_planet();
+    console.log('ohai 4');
 
     await shared.initDac(dacId, '4,PROPDAC', '1000000.0000 PROPDAC', {
       planet,
     });
+    console.log('ohai 5');
     await shared.updateconfig(dacId, '12.0000 PROPDAC');
+    console.log('ohai 6');
     eosiotoken = await ContractLoader.at('eosio.token');
+    console.log('ohai 7');
     await shared.dac_token_contract.stakeconfig(
       { enabled: true, min_stake_time: 5, max_stake_time: 20 },
       '4,PROPDAC',
       { from: shared.auth_account }
     );
+    console.log('ohai 8');
 
     regMembers = await shared.getRegMembers(dacId, '20000.0000 PROPDAC');
+    console.log('ohai 9');
     propDacCustodians = await shared.getStakeObservedCandidates(
       dacId,
       '20.0000 PROPDAC'
     );
+    console.log('ohai 10');
+
     await shared.voteForCustodians(regMembers, propDacCustodians, dacId);
+    console.log('ohai 11');
     await shared.daccustodian_contract.newperiod('propDac', dacId, {
       from: regMembers[0],
     });
+    console.log('ohai 12');
     await sleep(6_000);
     await shared.daccustodian_contract.newperiod('propDac', dacId, {
       from: regMembers[0],
     });
+    console.log('ohai 13');
 
     otherAccount = regMembers[1];
     arbitrator = regMembers[2];
@@ -124,12 +138,12 @@ describe.only('Dacproposals', () => {
           [
             {
               data: [
-                { key: 'approval_duration', value: [130, 'uint32'] },
+                { first: 'approval_duration', second: [130, 'uint32'] },
                 {
-                  key: 'proposal_threshold',
-                  value: [proposeApproveTheshold, 'uint8'],
+                  first: 'proposal_threshold',
+                  second: [proposeApproveTheshold, 'uint8'],
                 },
-                { key: 'finalize_threshold', value: [3, 'uint8'] },
+                { first: 'finalize_threshold', second: [3, 'uint8'] },
               ],
             },
           ]

@@ -309,33 +309,33 @@ export class SharedTestObjects {
   ) {
     const accounts = [
       {
-        key: Account_type.CUSTODIAN,
-        value: this.daccustodian_contract.account.name,
+        first: Account_type.CUSTODIAN,
+        second: this.daccustodian_contract.account.name,
       },
       {
-        key: Account_type.ESCROW,
-        value: this.dacescrow_contract.account.name,
+        first: Account_type.ESCROW,
+        second: this.dacescrow_contract.account.name,
       },
       {
-        key: Account_type.TREASURY,
-        value: this.treasury_account.name,
+        first: Account_type.TREASURY,
+        second: this.treasury_account.name,
       },
       {
-        key: Account_type.REFERENDUM,
-        value: this.referendum_contract.account.name,
+        first: Account_type.REFERENDUM,
+        second: this.referendum_contract.account.name,
       },
     ];
     if (config && config.planet) {
       accounts.push({
-        key: Account_type.MSIGOWNED,
-        value: config.planet.name,
+        first: Account_type.MSIGOWNED,
+        second: config.planet.name,
       });
     }
     if (config && config.vote_weight_account) {
       console.log('adding ', config.vote_weight_account.name);
       accounts.push({
-        key: Account_type.VOTING,
-        value: config.vote_weight_account.name,
+        first: Account_type.VOTING,
+        second: config.vote_weight_account.name,
       });
     }
 

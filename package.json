@@ -30,7 +30,7 @@
     "chai-datetime": "^1.5.0",
     "eosjs": "^20.0.0",
     "eosjs-ecc": "^4.0.4",
-    "lamington": "https://github.com/Alien-Worlds/lamington.git",
+    "lamington": "https://github.com/Alien-Worlds/lamington.git#antelope",
     "prettier": "2.7.1",
     "typescript": "^4.5.5"
   },
