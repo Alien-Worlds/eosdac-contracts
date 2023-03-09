@@ -29,30 +29,38 @@ let user2: Account;
 let dacId = 'refdac';
 
 enum vote_type {
-  TYPE_BINDING = 0,
-  TYPE_SEMI_BINDING = 1,
-  TYPE_OPINION = 2,
-  TYPE_INVALID = 3,
+  TYPE_BINDING = 'binding',
+  TYPE_SEMI_BINDING = 'semibinding',
+  TYPE_OPINION = 'opinion',
+  // TYPE_INVALID = 3,
 }
+
 enum count_type {
-  COUNT_TOKEN = 0,
-  COUNT_ACCOUNT = 1,
+  COUNT_TOKEN = 'token',
+  COUNT_ACCOUNT = 'account',
   COUNT_INVALID = 2,
+}
+
+enum voting_type {
+  VOTE_PROP_REMOVE = 'remove',
+  VOTE_PROP_YES = 'yes',
+  VOTE_PROP_NO = 'no',
+  VOTE_PROP_ABSTAIN = 'abstain',
 }
 
 const seconds = 1;
 const minutes = 60 * seconds;
 
 let serialized_actions: any;
-let delegateeCustodian: Account;
+// let delegateeCustodian: Account;
 let regMembers: Account[];
 let candidates: Account[];
-let otherAccount: Account;
-let proposer1Account: Account;
-let arbitrator: Account;
+// let otherAccount: Account;
+// let proposer1Account: Account;
+// let arbitrator: Account;
 let planet: Account;
 
-describe('referendum', () => {
+describe('Referendum', () => {
   before(async () => {
     shared = await SharedTestObjects.getInstance();
     referendum = shared.referendum_contract;
@@ -72,6 +80,10 @@ describe('referendum', () => {
     await configureAuths();
     await linkPermissions();
 
+    await shared.daccustodian_contract.newperiod(dacId, dacId, {
+      from: regMembers[0],
+    });
+    await sleep(6_000);
     await shared.daccustodian_contract.newperiod(dacId, dacId, {
       from: regMembers[0],
     });
@@ -113,21 +125,21 @@ describe('referendum', () => {
           duration: 5 * minutes,
           fee: [
             {
-              key: 0,
+              key: vote_type.TYPE_BINDING,
               value: {
                 contract: shared.dac_token_contract.account.name,
                 quantity: '1.0000 REF',
               },
             },
             {
-              key: 1,
+              key: vote_type.TYPE_SEMI_BINDING,
               value: {
                 contract: shared.dac_token_contract.account.name,
                 quantity: '1.0000 REF',
               },
             },
             {
-              key: 2,
+              key: vote_type.TYPE_OPINION,
               value: {
                 contract: shared.dac_token_contract.account.name,
                 quantity: '1.0000 REF',
@@ -136,71 +148,71 @@ describe('referendum', () => {
           ],
           pass: [
             {
-              key: 0,
+              key: vote_type.TYPE_BINDING,
               value: 1000,
             },
             {
-              key: 1,
+              key: vote_type.TYPE_SEMI_BINDING,
               value: 1000,
             },
             {
-              key: 2,
+              key: vote_type.TYPE_OPINION,
               value: 1000,
             },
           ],
           quorum_token: [
             {
-              key: 0,
+              key: vote_type.TYPE_BINDING,
               value: 1000,
             },
             {
-              key: 1,
+              key: vote_type.TYPE_SEMI_BINDING,
               value: 1000,
             },
             {
-              key: 2,
+              key: vote_type.TYPE_OPINION,
               value: 1000,
             },
           ],
           quorum_account: [
             {
-              key: 0,
+              key: vote_type.TYPE_BINDING,
               value: 1000,
             },
             {
-              key: 1,
+              key: vote_type.TYPE_SEMI_BINDING,
               value: 1000,
             },
             {
-              key: 2,
+              key: vote_type.TYPE_OPINION,
               value: 1000,
             },
           ],
           allow_per_account_voting: [
             {
-              key: 0,
+              key: vote_type.TYPE_BINDING,
               value: 1,
             },
             {
-              key: 1,
+              key: vote_type.TYPE_SEMI_BINDING,
               value: 1,
             },
             {
-              key: 2,
+              key: vote_type.TYPE_OPINION,
               value: 1,
             },
           ],
           allow_vote_type: [
             {
-              key: 0,
+              key: vote_type.TYPE_BINDING,
               value: 1,
             },
             {
-              key: 1,
+              key: vote_type.TYPE_SEMI_BINDING,
               value: 1,
             },
             {
-              key: 2,
+              key: vote_type.TYPE_OPINION,
               value: 1,
             },
           ],
@@ -302,7 +314,13 @@ describe('referendum', () => {
   });
   context('vote', async () => {
     it('should work', async () => {
-      await referendum.vote(user1.name, 'ref1', 1, dacId, { from: user1 });
+      await referendum.vote(
+        user1.name,
+        'ref1',
+        voting_type.VOTE_PROP_YES,
+        dacId,
+        { from: user1 }
+      );
     });
   });
   context('exec', async () => {
