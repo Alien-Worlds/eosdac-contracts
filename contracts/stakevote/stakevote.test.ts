@@ -763,8 +763,8 @@ async function get_from_dacglobals(dacId: string, key: string) {
   });
   const data = res.rows[0].data;
   for (const x of data) {
-    if (x.key == key) {
-      return x.value[1];
+    if (x.first == key) {
+      return x.second[1];
     }
   }
 }

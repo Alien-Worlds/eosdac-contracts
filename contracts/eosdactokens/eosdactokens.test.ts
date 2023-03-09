@@ -180,8 +180,8 @@ describe('EOSDacTokens', () => {
             [],
             [
               {
-                key: Account_type.CUSTODIAN,
-                value: shared.daccustodian_contract.account.name,
+                first: Account_type.CUSTODIAN,
+                second: shared.daccustodian_contract.account.name,
               },
             ],
             {
@@ -262,8 +262,8 @@ describe('EOSDacTokens', () => {
           [],
           [
             {
-              key: Account_type.CUSTODIAN,
-              value: shared.daccustodian_contract.account.name,
+              first: Account_type.CUSTODIAN,
+              second: shared.daccustodian_contract.account.name,
             },
           ],
           {

@@ -125,22 +125,22 @@ describe('Referendum', () => {
           duration: 5 * minutes,
           fee: [
             {
-              key: vote_type.TYPE_BINDING,
-              value: {
+              first: vote_type.TYPE_BINDING,
+              second: {
                 contract: shared.dac_token_contract.account.name,
                 quantity: '1.0000 REF',
               },
             },
             {
-              key: vote_type.TYPE_SEMI_BINDING,
-              value: {
+              first: vote_type.TYPE_SEMI_BINDING,
+              second: {
                 contract: shared.dac_token_contract.account.name,
                 quantity: '1.0000 REF',
               },
             },
             {
-              key: vote_type.TYPE_OPINION,
-              value: {
+              first: vote_type.TYPE_OPINION,
+              second: {
                 contract: shared.dac_token_contract.account.name,
                 quantity: '1.0000 REF',
               },
@@ -148,72 +148,72 @@ describe('Referendum', () => {
           ],
           pass: [
             {
-              key: vote_type.TYPE_BINDING,
-              value: 1000,
+              first: vote_type.TYPE_BINDING,
+              second: 1000,
             },
             {
-              key: vote_type.TYPE_SEMI_BINDING,
-              value: 1000,
+              first: vote_type.TYPE_SEMI_BINDING,
+              second: 1000,
             },
             {
-              key: vote_type.TYPE_OPINION,
-              value: 1000,
+              first: vote_type.TYPE_OPINION,
+              second: 1000,
             },
           ],
           quorum_token: [
             {
-              key: vote_type.TYPE_BINDING,
-              value: 1000,
+              first: vote_type.TYPE_BINDING,
+              second: 1000,
             },
             {
-              key: vote_type.TYPE_SEMI_BINDING,
-              value: 1000,
+              first: vote_type.TYPE_SEMI_BINDING,
+              second: 1000,
             },
             {
-              key: vote_type.TYPE_OPINION,
-              value: 1000,
+              first: vote_type.TYPE_OPINION,
+              second: 1000,
             },
           ],
           quorum_account: [
             {
-              key: vote_type.TYPE_BINDING,
-              value: 1000,
+              first: vote_type.TYPE_BINDING,
+              second: 1000,
             },
             {
-              key: vote_type.TYPE_SEMI_BINDING,
-              value: 1000,
+              first: vote_type.TYPE_SEMI_BINDING,
+              second: 1000,
             },
             {
-              key: vote_type.TYPE_OPINION,
-              value: 1000,
+              first: vote_type.TYPE_OPINION,
+              second: 1000,
             },
           ],
           allow_per_account_voting: [
             {
-              key: vote_type.TYPE_BINDING,
-              value: 1,
+              first: vote_type.TYPE_BINDING,
+              second: 1,
             },
             {
-              key: vote_type.TYPE_SEMI_BINDING,
-              value: 1,
+              first: vote_type.TYPE_SEMI_BINDING,
+              second: 1,
             },
             {
-              key: vote_type.TYPE_OPINION,
-              value: 1,
+              first: vote_type.TYPE_OPINION,
+              second: 1,
             },
           ],
           allow_vote_type: [
             {
-              key: vote_type.TYPE_BINDING,
-              value: 1,
+              first: vote_type.TYPE_BINDING,
+              second: 1,
             },
             {
-              key: vote_type.TYPE_SEMI_BINDING,
-              value: 1,
+              first: vote_type.TYPE_SEMI_BINDING,
+              second: 1,
             },
             {
-              key: vote_type.TYPE_OPINION,
-              value: 1,
+              first: vote_type.TYPE_OPINION,
+              second: 1,
             },
           ],
         },

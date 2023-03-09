@@ -406,28 +406,28 @@ describe('Daccustodian', () => {
           {
             data: [
               {
-                key: 'auth_threshold_high',
-                value: ['uint8', 4],
+                first: 'auth_threshold_high',
+                second: ['uint8', 4],
               },
               {
-                key: 'auth_threshold_low',
-                value: ['uint8', 2],
+                first: 'auth_threshold_low',
+                second: ['uint8', 2],
               },
               {
-                key: 'auth_threshold_mid',
-                value: ['uint8', 3],
+                first: 'auth_threshold_mid',
+                second: ['uint8', 3],
               },
               {
-                key: 'initial_vote_quorum_percent',
-                value: ['uint32', 31],
+                first: 'initial_vote_quorum_percent',
+                second: ['uint32', 31],
               },
               {
-                key: 'lockup_release_time_delay',
-                value: ['uint32', 1233],
+                first: 'lockup_release_time_delay',
+                second: ['uint32', 1233],
               },
               {
-                key: 'lockupasset',
-                value: [
+                first: 'lockupasset',
+                second: [
                   'extended_asset',
                   {
                     quantity: '12.0000 CUSDAC',
@@ -436,20 +436,20 @@ describe('Daccustodian', () => {
                 ],
               },
               {
-                key: 'maxvotes',
-                value: ['uint8', 4],
+                first: 'maxvotes',
+                second: ['uint8', 4],
               },
               {
-                key: 'numelected',
-                value: ['uint8', 5],
+                first: 'numelected',
+                second: ['uint8', 5],
               },
               {
-                key: 'periodlength',
-                value: ['uint32', 5],
+                first: 'periodlength',
+                second: ['uint32', 5],
               },
               {
-                key: 'requested_pay_max',
-                value: [
+                first: 'requested_pay_max',
+                second: [
                   'extended_asset',
                   {
                     quantity: '30.0000 EOS',
@@ -458,16 +458,16 @@ describe('Daccustodian', () => {
                 ],
               },
               {
-                key: 'should_pay_via_service_provider',
-                value: ['bool', 0],
+                first: 'should_pay_via_service_provider',
+                second: ['bool', 0],
               },
               {
-                key: 'token_supply_theshold',
-                value: ['uint64', 10000001],
+                first: 'token_supply_theshold',
+                second: ['uint64', 10000001],
               },
               {
-                key: 'vote_quorum_percent',
-                value: ['uint32', 15],
+                first: 'vote_quorum_percent',
+                second: ['uint32', 15],
               },
             ],
           },
@@ -3771,8 +3771,8 @@ async function get_from_dacglobals(
   });
   const data = res.rows[0].data;
   for (const x of data) {
-    if (x.key == key) {
-      return x.value[1];
+    if (x.first == key) {
+      return x.second[1];
     }
   }
 }
