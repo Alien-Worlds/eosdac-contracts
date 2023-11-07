@@ -169,7 +169,7 @@ void daccustodian::removeCustodian(name cust, name dac_id) {
 
     custodians_table custodians(_self, dac_id.value);
     auto             elected = custodians.require_find(cust.value,
-        "ERR::REMOVECUSTODIAN_NOT_CURRENT_CUSTODIAN::The entered account name is not for a current custodian.");
+                    "ERR::REMOVECUSTODIAN_NOT_CURRENT_CUSTODIAN::The entered account name is not for a current custodian.");
     custodians.erase(elected);
 
     pending_custodians_table pending_custs(get_self(), dac_id.value);
@@ -269,4 +269,18 @@ ACTION daccustodian::stprofile(const name &cand, const std::string &profile, con
     require_auth(cand);
     assertValidMember(cand, dac_id);
     check(profile.size() < 16256, "profile exceeds max size.");
+};
+
+struct profile {
+    std::string image;
+    std::string givenName;
+    std::string description;
+};
+
+ACTION daccustodian::stprofile2(const name &cand, const profile &profile, const name &dac_id) {
+    require_auth(cand);
+    assertValidMember(cand, dac_id);
+    check(profile.description.length() < 16256, "profile description exceeds max size.");
+    check(profile.image.length() < 1024, "profile description exceeds max size.");
+    check(profile.givenName.length() < 256, "profile description exceeds max size.");
 };

@@ -342,6 +342,13 @@ namespace eosdac {
 
         ACTION stprofile(const name &cand, const std::string &profile, const name &dac_id);
 
+        struct profile {
+            std::string image;
+            std::string givenName;
+            std::string description;
+        };
+
+        ACTION stprofile2(const name &cand, const profile &profile, const name &dac_id);
         ACTION updatereqpay(const name &cand, const eosio::asset &requestedpay, const name &dac_id);
         ACTION votecust(const name &voter, const std::vector<name> &newvotes, const name &dac_id);
         ACTION removecstvte(const name &voter, const name &dac_id);
@@ -411,9 +418,9 @@ namespace eosdac {
         void updateVoteWeights(const vector<name> &votes, const time_point_sec vote_time_stamp, int64_t vote_weight,
             name internal_dac_id, bool from_voting);
         std::pair<int64_t, int64_t> get_vote_weight(name voter, name dac_id);
-        void                        modifyVoteWeights(const account_weight_delta &awd, const vector<name> &oldVotes,
-                                   const std::optional<time_point_sec> &oldVoteTimestamp, const vector<name> &newVotes,
-                                   time_point_sec new_time_stamp, const name dac_id, const bool from_voting);
+        void modifyVoteWeights(const account_weight_delta &awd, const vector<name> &oldVotes,
+            const std::optional<time_point_sec> &oldVoteTimestamp, const vector<name> &newVotes,
+            time_point_sec new_time_stamp, const name dac_id, const bool from_voting);
         void modifyProxiesWeight(int64_t vote_weight, name oldProxy, name newProxy, name dac_id, bool from_voting);
         void assertPeriodTime(const dacglobals &globals);
         void assertPendingPeriodTime(const dacglobals &globals);
