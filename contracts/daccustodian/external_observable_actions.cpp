@@ -27,7 +27,25 @@ ACTION daccustodian::weightobsv(const vector<account_weight_delta> &account_weig
     check(has_auth(token_contract) || (router_account && has_auth(*router_account)),
         "Must have auth of token or router contract to call weightobsv");
 
-    votes_table votes_cast_by_members(get_self(), dac_id.value);
+    votes_table       votes_cast_by_members(get_self(), dac_id.value);
+    candidates2_table registered_candidates(get_self(), dac_id.value);
+    auto              globals = dacglobals{get_self(), dac_id};
+
+    auto       current_candidate_set = std::set<name>{};
+    const auto electcount            = globals.get_numelected();
+    auto       vote_idx              = registered_candidates.get_index<"bydecayed"_n>();
+
+    // TODO: check if we are in the last minute of an election period
+    bool lastMinuteChange = false;
+
+    // Only do this before and after comparison if we are in the last minute of an election period
+    if (lastMinuteChange) {
+        auto vote_idx_itrr = vote_idx.begin();
+        while (current_candidate_set.size() < electcount && vote_idx_itrr != vote_idx.end()) {
+            current_candidate_set.insert(vote_idx_itrr->candidate_name);
+            vote_idx_itrr++;
+        }
+    }
 
     for (account_weight_delta awd : account_weight_deltas) {
         auto existingVote = votes_cast_by_members.find(awd.account.value);
@@ -38,6 +56,20 @@ ACTION daccustodian::weightobsv(const vector<account_weight_delta> &account_weig
                 modifyVoteWeights(awd, {}, existingVote->vote_time_stamp, existingVote->candidates,
                     existingVote->vote_time_stamp, dac_id, false);
             }
+        }
+    }
+
+    if (lastMinuteChange) {
+        auto vote_idx_itrr = vote_idx.begin();
+        auto elect_counter = 0;
+        while (elect_counter < electcount && vote_idx_itrr != vote_idx.end()) {
+            if (current_candidate_set.find(vote_idx_itrr->candidate_name) == current_candidate_set.end()) {
+                // This candidate is new to the top 5
+                globals.set_period_extra_seconds(globals.get_period_extra_seconds() + 300);
+                break;
+            }
+            vote_idx_itrr++;
+            elect_counter++;
         }
     }
 }

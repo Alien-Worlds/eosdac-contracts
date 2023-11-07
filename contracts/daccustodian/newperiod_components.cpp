@@ -60,6 +60,10 @@ void daccustodian::assertPeriodTime(const dacglobals &globals) {
     check(periodBlockCount > globals.get_periodlength(),
         "ERR::NEWPERIOD_EARLY::New period is being called too soon. Period length is %s periodBlockCount: %s",
         globals.get_periodlength(), periodBlockCount);
+
+    check(periodBlockCount > globals.get_periodlength() + globals.get_period_extra_seconds(),
+        "ERR::NEWPERIOD_EXTENDED::Period was extended by a further %s seconds. PeriodBlockCount: %s",
+        globals.get_period_extra_seconds(), globals.get_periodlength(), periodBlockCount);
 }
 
 void daccustodian::assertPendingPeriodTime(const dacglobals &globals) {
@@ -354,6 +358,7 @@ ACTION daccustodian::runnewperiod(const string &message, const name &dac_id) {
         setMsigAuths(dac_id);
 
         globals.set_lastperiodtime(current_block_time().to_time_point());
+        globals.set_period_extra_seconds(0);
     }
 }
 

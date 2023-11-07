@@ -299,6 +299,7 @@ namespace eosdac {
             PROPERTY(int64_t, total_votes_on_candidates); 
             PROPERTY(eosio::time_point_sec, lastperiodtime);
             PROPERTY(eosio::time_point_sec, pending_period_time);
+            PROPERTY(uint32_t, period_extra_seconds);
             PROPERTY(eosio::extended_asset, lockupasset); 
             PROPERTY(uint8_t, maxvotes); 
             PROPERTY(uint8_t, numelected);
