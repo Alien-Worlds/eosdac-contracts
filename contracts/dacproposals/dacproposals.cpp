@@ -25,7 +25,10 @@ namespace eosdac {
             "ERR::CREATEPROP_DUPLICATE_ID::A Proposal with the id already exists. Try again with a different id.");
 
         check(title.length() > 3, "ERR::CREATEPROP_SHORT_TITLE::Title length is too short.");
+        check(title.length() < 256, "ERR::CREATEPROP_LONG_TITLE::Title length is too long.");
+
         check(summary.length() > 3, "ERR::CREATEPROP_SHORT_SUMMARY::Summary length is too short.");
+        check(summary.length() < 512, "ERR::CREATEPROP_LONG_SUMMARY::Summary length is too long.");
         check(proposal_pay.quantity.symbol.is_valid(), "ERR::CREATEPROP_INVALID_SYMBOL::Invalid pay amount symbol.");
         check(proposal_pay.quantity.amount > 0,
             "ERR::CREATEPROP_INVALID_proposal_pay::Invalid pay amount. Must be greater than 0.");
@@ -43,6 +46,8 @@ namespace eosdac {
             p.proposal_id  = id;
             p.proposer     = proposer;
             p.arbiter      = arbiter;
+            p.title        = title;
+            p.summary      = summary;
             p.content_hash = content_hash;
             p.proposal_pay = proposal_pay;
             p.arbiter_pay  = arbiter_pay;
