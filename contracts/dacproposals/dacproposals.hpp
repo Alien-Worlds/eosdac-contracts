@@ -65,6 +65,8 @@ namespace eosdac {
             name           proposal_id;
             name           proposer;
             name           arbiter;
+            string         title;
+            string         summary;
             string         content_hash;
             extended_asset proposal_pay;
             extended_asset arbiter_pay;
