@@ -136,15 +136,9 @@ ACTION daccustodian::setperiodlen(const uint32_t &periodlength, const name &dac_
     auto globals = dacglobals{get_self(), dac_id};
 
     // No technical reason for this other than keeping some sanity in the settings
-    check(periodlength <= 3 * 365 * 24 * 60 * 60,
+    check(periodlength <= 24 * 60 * 60 * 3 * 365,
         "ERR::SETPERIODLEN_INVALID_VALUE::The period length cannot be longer than 3 years.");
-    check(periodlength > 0, "ERR::UPDATECONFIG_PERIOD_LENGTH::The period length must be greater than 0.");
-
-    check(periodlength >= 86400,
-        "ERR::SETPERIODLEN_INVALID_VALUE::Period length must be at least 1 day (86400 seconds).");
-    check(periodlength <= 31536000,
-        "ERR::SETPERIODLEN_INVALID_VALUE::Period length cannot exceed 1 year (31536000 seconds).");
-
+    check(periodlength >= 24 * 60 * 60, "ERR::SETPERIODLEN_INVALID_VALUE::Period length must be at least 1 day.");
     check(globals.get_pending_period_delay() <= periodlength,
         "ERR::SETPERIODLEN_INVALID_VALUE::The pending period length cannot be longer than the period length.");
 
