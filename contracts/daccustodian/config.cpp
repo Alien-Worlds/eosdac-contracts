@@ -69,7 +69,6 @@ ACTION daccustodian::updateconfige(const contr_config &new_config, const name &d
 #endif
 
 ACTION daccustodian::setlockasset(const extended_asset &lockupasset, const name &dac_id) {
-
     const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
     if (!has_auth(get_self())) {
         require_auth(dacForScope.owner);
@@ -86,8 +85,8 @@ ACTION daccustodian::setlockasset(const extended_asset &lockupasset, const name 
 
 ACTION daccustodian::setmaxvotes(const uint8_t &maxvotes, const name &dac_id) {
 
-    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
     if (!has_auth(get_self())) {
+        const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
         require_auth(dacForScope.owner);
         check(false, "not active yet");
     }
@@ -103,8 +102,8 @@ ACTION daccustodian::setmaxvotes(const uint8_t &maxvotes, const name &dac_id) {
 
 ACTION daccustodian::setnumelect(const uint8_t &numelected, const name &dac_id) {
 
-    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
     if (!has_auth(get_self())) {
+        const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
         require_auth(dacForScope.owner);
         check(false, "not active yet");
     }
@@ -121,8 +120,8 @@ ACTION daccustodian::setnumelect(const uint8_t &numelected, const name &dac_id) 
 
 ACTION daccustodian::setperiodlen(const uint32_t &periodlength, const name &dac_id) {
 
-    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
     if (!has_auth(get_self())) {
+        const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
         require_auth(dacForScope.owner);
         check(false, "not active yet");
     }
@@ -141,8 +140,8 @@ ACTION daccustodian::setperiodlen(const uint32_t &periodlength, const name &dac_
 
 ACTION daccustodian::setpenddelay(const uint32_t &pending_period_delay, const name &dac_id) {
 
-    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
     if (!has_auth(get_self())) {
+        const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
         require_auth(dacForScope.owner);
         check(false, "not active yet");
     }
@@ -156,14 +155,12 @@ ACTION daccustodian::setpenddelay(const uint32_t &pending_period_delay, const na
 }
 
 ACTION daccustodian::setpayvia(const bool &should_pay_via_service_provider, const name &dac_id) {
+    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
 
-    dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
-#ifdef IS_DEV
-    // This will be enabled later in prod instead of get_self() to allow DAO's to control this config.
-    require_auth(dacForScope.owner);
-#else
-    require_auth(get_self());
-#endif
+    if (!has_auth(get_self())) {
+        require_auth(dacForScope.owner);
+        check(false, "not active yet");
+    }
 
     if (should_pay_via_service_provider) {
         check(dacForScope.account_for_type_maybe(dacdir::SERVICE).has_value(),
@@ -176,8 +173,8 @@ ACTION daccustodian::setpayvia(const bool &should_pay_via_service_provider, cons
 
 ACTION daccustodian::setinitvote(const uint32_t &initial_vote_quorum_percent, const name &dac_id) {
 
-    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
     if (!has_auth(get_self())) {
+        const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
         require_auth(dacForScope.owner);
         check(false, "not active yet");
     }
@@ -191,8 +188,8 @@ ACTION daccustodian::setinitvote(const uint32_t &initial_vote_quorum_percent, co
 
 ACTION daccustodian::setvotequor(const uint32_t &vote_quorum_percent, const name &dac_id) {
 
-    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
     if (!has_auth(get_self())) {
+        const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
         require_auth(dacForScope.owner);
         check(false, "not active yet");
     }
@@ -206,13 +203,11 @@ ACTION daccustodian::setvotequor(const uint32_t &vote_quorum_percent, const name
 
 ACTION daccustodian::setauthhigh(const uint8_t &auth_threshold_high, const name &dac_id) {
 
-    dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
-#ifdef IS_DEV
-    // This will be enabled later in prod instead of get_self() to allow DAO's to control this config.
-    require_auth(dacForScope.owner);
-#else
-    require_auth(get_self());
-#endif
+    if (!has_auth(get_self())) {
+        const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
+        require_auth(dacForScope.owner);
+        check(false, "not active yet");
+    }
 
     auto globals = dacglobals{get_self(), dac_id};
 
@@ -225,8 +220,8 @@ ACTION daccustodian::setauthhigh(const uint8_t &auth_threshold_high, const name 
 
 ACTION daccustodian::setauthmid(const uint8_t &auth_threshold_mid, const name &dac_id) {
 
-    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
     if (!has_auth(get_self())) {
+        const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
         require_auth(dacForScope.owner);
         check(false, "not active yet");
     }
@@ -242,8 +237,8 @@ ACTION daccustodian::setauthmid(const uint8_t &auth_threshold_mid, const name &d
 
 ACTION daccustodian::setauthlow(const uint8_t &auth_threshold_low, const name &dac_id) {
 
-    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
     if (!has_auth(get_self())) {
+        const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
         require_auth(dacForScope.owner);
         check(false, "not active yet");
     }
@@ -259,8 +254,8 @@ ACTION daccustodian::setauthlow(const uint8_t &auth_threshold_low, const name &d
 
 ACTION daccustodian::setlockdelay(const uint32_t &lockup_release_time_delay, const name &dac_id) {
 
-    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
     if (!has_auth(get_self())) {
+        const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
         require_auth(dacForScope.owner);
         check(false, "not active yet");
     }
@@ -276,8 +271,8 @@ ACTION daccustodian::setlockdelay(const uint32_t &lockup_release_time_delay, con
 
 ACTION daccustodian::setpaymax(const extended_asset &requested_pay_max, const name &dac_id) {
 
-    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
     if (!has_auth(get_self())) {
+        const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
         require_auth(dacForScope.owner);
         check(false, "not active yet");
     }
@@ -291,8 +286,8 @@ ACTION daccustodian::setpaymax(const extended_asset &requested_pay_max, const na
 
 ACTION daccustodian::settokensup(const uint64_t &token_supply_theshold, const name &dac_id) {
 
-    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
     if (!has_auth(get_self())) {
+        const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
         require_auth(dacForScope.owner);
         check(false, "not active yet");
     }
