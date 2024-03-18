@@ -1,6 +1,7 @@
 #include "../../contract-shared-headers/dacdirectory_shared.hpp"
 using namespace eosdac;
 
+#ifdef IS_DEV
 ACTION daccustodian::updateconfige(const contr_config &new_config, const name &dac_id) {
 
     dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
@@ -65,16 +66,15 @@ ACTION daccustodian::updateconfige(const contr_config &new_config, const name &d
     globals.set_requested_pay_max(new_config.requested_pay_max);
     globals.set_token_supply_theshold(new_config.token_supply_theshold);
 }
+#endif
 
 ACTION daccustodian::setlockasset(const extended_asset &lockupasset, const name &dac_id) {
 
-    dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
-#ifdef IS_DEV
-    // This will be enabled later in prod instead of get_self() to allow DAO's to control this config.
-    require_auth(dacForScope.owner);
-#else
-    require_auth(get_self());
-#endif
+    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
+    if (!has_auth(get_self())) {
+        require_auth(dacForScope.owner);
+        check(false, "not active yet");
+    }
 
     check(lockupasset.quantity.symbol == dacForScope.symbol.get_symbol(),
         "Symbol mismatch dac symbol is %s but symbol given is %s", dacForScope.symbol.get_symbol(),
@@ -86,13 +86,11 @@ ACTION daccustodian::setlockasset(const extended_asset &lockupasset, const name 
 
 ACTION daccustodian::setmaxvotes(const uint8_t &maxvotes, const name &dac_id) {
 
-    dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
-#ifdef IS_DEV
-    // This will be enabled later in prod instead of get_self() to allow DAO's to control this config.
-    require_auth(dacForScope.owner);
-#else
-    require_auth(get_self());
-#endif
+    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
+    if (!has_auth(get_self())) {
+        require_auth(dacForScope.owner);
+        check(false, "not active yet");
+    }
 
     auto globals = dacglobals{get_self(), dac_id};
 
@@ -105,13 +103,11 @@ ACTION daccustodian::setmaxvotes(const uint8_t &maxvotes, const name &dac_id) {
 
 ACTION daccustodian::setnumelect(const uint8_t &numelected, const name &dac_id) {
 
-    dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
-#ifdef IS_DEV
-    // This will be enabled later in prod instead of get_self() to allow DAO's to control this config.
-    require_auth(dacForScope.owner);
-#else
-    require_auth(get_self());
-#endif
+    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
+    if (!has_auth(get_self())) {
+        require_auth(dacForScope.owner);
+        check(false, "not active yet");
+    }
 
     auto globals = dacglobals{get_self(), dac_id};
 
@@ -125,13 +121,11 @@ ACTION daccustodian::setnumelect(const uint8_t &numelected, const name &dac_id) 
 
 ACTION daccustodian::setperiodlen(const uint32_t &periodlength, const name &dac_id) {
 
-    dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
-#ifdef IS_DEV
-    // This will be enabled later in prod instead of get_self() to allow DAO's to control this config.
-    require_auth(dacForScope.owner);
-#else
-    require_auth(get_self());
-#endif
+    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
+    if (!has_auth(get_self())) {
+        require_auth(dacForScope.owner);
+        check(false, "not active yet");
+    }
 
     auto globals = dacglobals{get_self(), dac_id};
 
@@ -147,13 +141,11 @@ ACTION daccustodian::setperiodlen(const uint32_t &periodlength, const name &dac_
 
 ACTION daccustodian::setpenddelay(const uint32_t &pending_period_delay, const name &dac_id) {
 
-    dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
-#ifdef IS_DEV
-    // This will be enabled later in prod instead of get_self() to allow DAO's to control this config.
-    require_auth(dacForScope.owner);
-#else
-    require_auth(get_self());
-#endif
+    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
+    if (!has_auth(get_self())) {
+        require_auth(dacForScope.owner);
+        check(false, "not active yet");
+    }
 
     auto globals = dacglobals{get_self(), dac_id};
 
@@ -184,13 +176,11 @@ ACTION daccustodian::setpayvia(const bool &should_pay_via_service_provider, cons
 
 ACTION daccustodian::setinitvote(const uint32_t &initial_vote_quorum_percent, const name &dac_id) {
 
-    dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
-#ifdef IS_DEV
-    // This will be enabled later in prod instead of get_self() to allow DAO's to control this config.
-    require_auth(dacForScope.owner);
-#else
-    require_auth(get_self());
-#endif
+    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
+    if (!has_auth(get_self())) {
+        require_auth(dacForScope.owner);
+        check(false, "not active yet");
+    }
 
     check(initial_vote_quorum_percent < 100,
         "ERR::SETINITVOTE_INVALID_INITIAL_VOTE_QUORUM_PERCENT::The initial vote quorum percent must be less than 100 and most likely a lot less than 100 to be achievable for the DAC.");
@@ -201,13 +191,11 @@ ACTION daccustodian::setinitvote(const uint32_t &initial_vote_quorum_percent, co
 
 ACTION daccustodian::setvotequor(const uint32_t &vote_quorum_percent, const name &dac_id) {
 
-    dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
-#ifdef IS_DEV
-    // This will be enabled later in prod instead of get_self() to allow DAO's to control this config.
-    require_auth(dacForScope.owner);
-#else
-    require_auth(get_self());
-#endif
+    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
+    if (!has_auth(get_self())) {
+        require_auth(dacForScope.owner);
+        check(false, "not active yet");
+    }
 
     check(vote_quorum_percent < 100,
         "ERR::SETVOTEQUOR_INVALID_VOTE_QUORUM_PERCENT::The vote quorum percent must be less than 100 and most likely a lot less than 100 to be achievable for the DAC.");
@@ -237,13 +225,11 @@ ACTION daccustodian::setauthhigh(const uint8_t &auth_threshold_high, const name 
 
 ACTION daccustodian::setauthmid(const uint8_t &auth_threshold_mid, const name &dac_id) {
 
-    dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
-#ifdef IS_DEV
-    // This will be enabled later in prod instead of get_self() to allow DAO's to control this config.
-    require_auth(dacForScope.owner);
-#else
-    require_auth(get_self());
-#endif
+    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
+    if (!has_auth(get_self())) {
+        require_auth(dacForScope.owner);
+        check(false, "not active yet");
+    }
 
     auto globals = dacglobals{get_self(), dac_id};
 
@@ -256,13 +242,11 @@ ACTION daccustodian::setauthmid(const uint8_t &auth_threshold_mid, const name &d
 
 ACTION daccustodian::setauthlow(const uint8_t &auth_threshold_low, const name &dac_id) {
 
-    dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
-#ifdef IS_DEV
-    // This will be enabled later in prod instead of get_self() to allow DAO's to control this config.
-    require_auth(dacForScope.owner);
-#else
-    require_auth(get_self());
-#endif
+    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
+    if (!has_auth(get_self())) {
+        require_auth(dacForScope.owner);
+        check(false, "not active yet");
+    }
 
     auto globals = dacglobals{get_self(), dac_id};
 
@@ -275,13 +259,11 @@ ACTION daccustodian::setauthlow(const uint8_t &auth_threshold_low, const name &d
 
 ACTION daccustodian::setlockdelay(const uint32_t &lockup_release_time_delay, const name &dac_id) {
 
-    dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
-#ifdef IS_DEV
-    // This will be enabled later in prod instead of get_self() to allow DAO's to control this config.
-    require_auth(dacForScope.owner);
-#else
-    require_auth(get_self());
-#endif
+    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
+    if (!has_auth(get_self())) {
+        require_auth(dacForScope.owner);
+        check(false, "not active yet");
+    }
 
     check(lockup_release_time_delay >= 86400,
         "ERR::SETLOCKDELAY_INVALID_VALUE::Lockup release time delay must be at least 1 day (86400 seconds).");
@@ -294,13 +276,11 @@ ACTION daccustodian::setlockdelay(const uint32_t &lockup_release_time_delay, con
 
 ACTION daccustodian::setpaymax(const extended_asset &requested_pay_max, const name &dac_id) {
 
-    dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
-#ifdef IS_DEV
-    // This will be enabled later in prod instead of get_self() to allow DAO's to control this config.
-    require_auth(dacForScope.owner);
-#else
-    require_auth(get_self());
-#endif
+    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
+    if (!has_auth(get_self())) {
+        require_auth(dacForScope.owner);
+        check(false, "not active yet");
+    }
 
     check(requested_pay_max.quantity.symbol.is_valid(),
         "ERR::SETPAYMAX_INVALID_SYMBOL::Invalid requested pay max symbol.");
@@ -311,13 +291,11 @@ ACTION daccustodian::setpaymax(const extended_asset &requested_pay_max, const na
 
 ACTION daccustodian::settokensup(const uint64_t &token_supply_theshold, const name &dac_id) {
 
-    dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
-#ifdef IS_DEV
-    // This will be enabled later in prod instead of get_self() to allow DAO's to control this config.
-    require_auth(dacForScope.owner);
-#else
-    require_auth(get_self());
-#endif
+    const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
+    if (!has_auth(get_self())) {
+        require_auth(dacForScope.owner);
+        check(false, "not active yet");
+    }
 
     check(token_supply_theshold > 1000 * 10000,
         "ERR::SETTOKENSUP_INVALID_VALUE::token_supply_theshold amount must be at least 1000 tokens (1000 * 10000).");

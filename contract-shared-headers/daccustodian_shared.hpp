@@ -322,7 +322,9 @@ namespace eosdac {
       public:
         daccustodian(name s, name code, datastream<const char *> ds) : contract(s, code, ds) {}
 
+#ifdef IS_DEV
         ACTION updateconfige(const contr_config &new_config, const name &dac_id);
+#endif
         // ACTION transferobsv(name from, name to, asset quantity, name dac_id);
         ACTION balanceobsv(const vector<account_balance_delta> &account_balance_deltas, const name &dac_id);
         ACTION stakeobsv(const vector<account_stake_delta> &account_stake_deltas, const name &dac_id);
