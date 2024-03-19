@@ -95,7 +95,7 @@ ACTION daccustodian::setmaxvotes(const uint8_t &maxvotes, const name &dac_id) {
 
     check(maxvotes > 0, "ERR::SETMAXVOTES_INVALID_VALUE::Max votes must be greater than zero.");
 
-    check(S{maxvotes}.to<double>() <= S{globals.get_numelected()}.to<double>() / S{2.0},
+    check(S{maxvotes}.to<double>() < S{globals.get_numelected()}.to<double>() / S{2.0},
         "ERR::SETMAXVOTES_INVALID_VALUE::The number of max votes must be less than or equal to half the number of elected candidates.");
 
     globals.set_maxvotes(maxvotes);
