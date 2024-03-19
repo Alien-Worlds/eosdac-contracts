@@ -132,8 +132,8 @@ ACTION daccustodian::setperiodlen(const uint32_t &periodlength, const name &dac_
     const auto days   = 24 * 60 * 60;
     const auto months = 30 * days;
 
-    check(periodlength <= 12 * months,
-        "ERR::SETPERIODLEN_INVALID_VALUE::The period length cannot be longer than 12 months.");
+    check(periodlength <= 6 * months,
+        "ERR::SETPERIODLEN_INVALID_VALUE::The period length cannot be longer than 6 months.");
     check(periodlength >= days, "ERR::SETPERIODLEN_INVALID_VALUE::Period length must be at least 1 day.");
     check(globals.get_pending_period_delay() <= periodlength,
         "ERR::SETPERIODLEN_INVALID_VALUE::The pending period length cannot be longer than the period length.");
