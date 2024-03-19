@@ -94,8 +94,9 @@ ACTION daccustodian::setmaxvotes(const uint8_t &maxvotes, const name &dac_id) {
     auto globals = dacglobals{get_self(), dac_id};
 
     check(maxvotes > 0, "ERR::SETMAXVOTES_INVALID_VALUE::Max votes must be greater than zero.");
-    check(maxvotes <= globals.get_numelected(),
-        "ERR::SETMAXVOTES_INVALID_VALUE::The number of max votes must be less than the number of elected candidates.");
+
+    check(S{maxvotes}.to<double>() <= S{globals.get_numelected()}.to<double>() / S{2.0},
+        "ERR::SETMAXVOTES_INVALID_VALUE::The number of max votes must be less than or equal to half the number of elected candidates.");
 
     globals.set_maxvotes(maxvotes);
 }
@@ -112,7 +113,7 @@ ACTION daccustodian::setnumelect(const uint8_t &numelected, const name &dac_id) 
 
     check(numelected <= 67, "ERR::SETNUMELECT_INVALID_VALUE::The number of elected candidates must be <= 67");
     check(numelected > 0, "ERR::SETNUMELECT_INVALID_VALUE::Number of elected candidates must be greater than zero.");
-    check(numelected >= globals.get_maxvotes(),
+    check(numelected > 2 * globals.get_maxvotes(),
         "ERR::SETNUMELECT_LESS_THAN_MAXVOTES::Number of elected candidates cannot be less than max votes.");
 
     globals.set_numelected(numelected);
@@ -128,10 +129,12 @@ ACTION daccustodian::setperiodlen(const uint32_t &periodlength, const name &dac_
 
     auto globals = dacglobals{get_self(), dac_id};
 
-    // No technical reason for this other than keeping some sanity in the settings
-    check(periodlength <= 24 * 60 * 60 * 3 * 365,
-        "ERR::SETPERIODLEN_INVALID_VALUE::The period length cannot be longer than 3 years.");
-    check(periodlength >= 24 * 60 * 60, "ERR::SETPERIODLEN_INVALID_VALUE::Period length must be at least 1 day.");
+    const auto days   = 24 * 60 * 60;
+    const auto months = 30 * days;
+
+    check(periodlength <= 12 * months,
+        "ERR::SETPERIODLEN_INVALID_VALUE::The period length cannot be longer than 12 months.");
+    check(periodlength >= days, "ERR::SETPERIODLEN_INVALID_VALUE::Period length must be at least 1 day.");
     check(globals.get_pending_period_delay() <= periodlength,
         "ERR::SETPERIODLEN_INVALID_VALUE::The pending period length cannot be longer than the period length.");
 
