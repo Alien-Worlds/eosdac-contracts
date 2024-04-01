@@ -119,6 +119,7 @@ describe('Dacproposals', () => {
               proposal_threshold: 7,
               finalize_threshold: 5,
               approval_duration: 130,
+              min_proposal_duration: 0,
             },
             dacId,
             { from: otherAccount }
@@ -133,6 +134,7 @@ describe('Dacproposals', () => {
             proposal_threshold: proposeApproveTheshold,
             finalize_threshold: 3,
             approval_duration: 130,
+            min_proposal_duration: 0,
           },
           dacId,
           { from: shared.auth_account }
@@ -150,6 +152,7 @@ describe('Dacproposals', () => {
                   value: [proposeApproveTheshold, 'uint8'],
                 },
                 { key: 'finalize_threshold', value: [3, 'uint8'] },
+                { key: 'min_proposal_duration', value: [0, 'uint32'] },
               ],
             },
           ]
@@ -1077,6 +1080,7 @@ describe('Dacproposals', () => {
             proposal_threshold: proposeApproveTheshold,
             finalize_threshold: 5,
             approval_duration: 3, // set short for expiry of the
+            min_proposal_duration: 0,
           },
           dacId,
           { from: shared.auth_account }
@@ -1448,6 +1452,10 @@ describe('Dacproposals', () => {
           });
           context('with enough finalize_approve votes to approve', async () => {
             before(async () => {
+              await shared.dacproposals_contract.minduration(20, dacId, {
+                from: shared.auth_account,
+              });
+
               for (const custodian of propDacCustodians) {
                 await shared.dacproposals_contract.votepropfin(
                   custodian.name,
@@ -1469,7 +1477,16 @@ describe('Dacproposals', () => {
                 );
               }
             });
-            it('finalize should succeed', async () => {
+            it('before minimum duration is up, should fail', async () => {
+              await assertEOSErrorIncludesMessage(
+                shared.dacproposals_contract.finalize(newpropid, dacId, {
+                  from: proposer1Account,
+                }),
+                'ERR::FINALIZE_TOO_EARLY::'
+              );
+            });
+            it('after waiting, finalize should succeed', async () => {
+              await sleep(20000);
               await shared.dacproposals_contract.finalize(newpropid, dacId, {
                 from: proposer1Account,
               });
@@ -1554,6 +1571,7 @@ describe('Dacproposals', () => {
             proposal_threshold: proposeApproveTheshold,
             finalize_threshold: 5,
             approval_duration: 30,
+            min_proposal_duration: 0,
           },
           dacId,
           { from: shared.auth_account }
@@ -1832,6 +1850,7 @@ describe('Dacproposals', () => {
             proposal_threshold: proposeApproveTheshold,
             finalize_threshold: 5,
             approval_duration: 30,
+            min_proposal_duration: 0,
           },
           dacId,
           { from: shared.auth_account }
@@ -2097,6 +2116,7 @@ describe('Dacproposals', () => {
           proposal_threshold: proposeApproveTheshold,
           finalize_threshold: 5,
           approval_duration: 30,
+          min_proposal_duration: 0,
         },
         dacId,
         { from: shared.auth_account }
@@ -2266,6 +2286,7 @@ describe('Dacproposals', () => {
           proposal_threshold: proposeApproveTheshold,
           finalize_threshold: 5,
           approval_duration: 30,
+          min_proposal_duration: 0,
         },
         dacId,
         { from: shared.auth_account }
@@ -2377,6 +2398,7 @@ describe('Dacproposals', () => {
               proposal_threshold: proposeApproveTheshold,
               finalize_threshold: 5,
               approval_duration: 130,
+              min_proposal_duration: 0,
             },
             dacId,
             { from: shared.auth_account }

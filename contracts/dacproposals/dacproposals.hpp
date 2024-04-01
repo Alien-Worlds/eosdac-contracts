@@ -73,6 +73,7 @@ namespace eosdac {
             bool           arbiter_agreed = false;
             name           state;
             time_point_sec expiry;
+            time_point_sec created_at;
             uint32_t       job_duration; // job duration in seconds
             uint16_t       category;
 
@@ -101,9 +102,10 @@ namespace eosdac {
             eosio::indexed_by<"category"_n, eosio::const_mem_fun<proposal, uint64_t, &proposal::category_key>>>;
 
         struct config {
-            uint8_t  proposal_threshold = 4;
-            uint8_t  finalize_threshold = 1;
-            uint32_t approval_duration  = 30 * 24 * 60 * 60;
+            uint8_t  proposal_threshold    = 4;
+            uint8_t  finalize_threshold    = 1;
+            uint32_t approval_duration     = 30 * 24 * 60 * 60;
+            uint32_t min_proposal_duration = 0;
         };
 
         // using configs_table = eosio::singleton<"config"_n, config>;
@@ -113,6 +115,7 @@ namespace eosdac {
             PROPERTY(uint8_t, proposal_threshold); 
             PROPERTY(uint8_t, finalize_threshold);
             PROPERTY(uint32_t, approval_duration); 
+            PROPERTY(uint32_t, min_proposal_duration); 
         );
         // clang-format on
 
@@ -142,6 +145,7 @@ namespace eosdac {
         // ACTION clearconfig(name dac_id);
         ACTION clearexpprop(name proposal_id, name dac_id);
         ACTION updpropvotes(name proposal_id, name dac_id);
+        ACTION minduration(uint32_t new_min_proposal_duration, name dac_id);
 
       private:
         void    clearprop(const proposal &proposal, name dac_id);
