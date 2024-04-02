@@ -40,6 +40,33 @@ namespace eosdac {
         check(arbiter != auth && arbiter != funding_source, "arbiter must be a third party");
         auto current_configs = configs{get_self(), dac_id};
 
+        const auto fee_required = current_configs.get_proposal_fee();
+        if (fee_required.quantity.amount > 0) {
+            auto deposits = deposits_table{get_self(), get_self().value};
+            auto dep      = deposits.find(proposer.value);
+
+            check(
+                dep != deposits.end(), "ERR::FEE_REQUIRED::A fee of %s is required to propose.", fee_required.quantity);
+            check(dep->deposit.quantity >= fee_required.quantity && dep->deposit.contract == fee_required.contract,
+                "ERR::INSUFFICIENT_FEE::Fee provided is insufficient. Needs %s but has only %s", fee_required.quantity,
+                dep->deposit.quantity);
+
+            if (dep->deposit == fee_required) {
+                deposits.erase(dep);
+            } else {
+                deposits.modify(*dep, same_payer, [&](auto &d) {
+                    d.deposit -= fee_required;
+                });
+            }
+
+            // transfer fee to dao account
+            const auto   fee_receiver = dac.owner;
+            const string fee_memo     = fmt("Fee for proposal id %s", id);
+            eosio::action(eosio::permission_level{get_self(), "active"_n}, fee_required.contract, "transfer"_n,
+                make_tuple(get_self(), fee_receiver, fee_required.quantity, fee_memo))
+                .send();
+        }
+
         uint32_t approval_duration = current_configs.get_approval_duration();
 
         proposals.emplace(proposer, [&](proposal &p) {
@@ -404,6 +431,7 @@ namespace eosdac {
         current_configs.set_proposal_threshold(new_config.proposal_threshold);
         current_configs.set_finalize_threshold(new_config.finalize_threshold);
         current_configs.set_approval_duration(new_config.approval_duration);
+        current_configs.set_proposal_fee(new_config.proposal_fee);
     }
 
     // ACTION dacproposals::clearconfig(name dac_id) {
@@ -648,4 +676,50 @@ namespace eosdac {
 
         clearprop(prop, dac_id);
     }
+
+    void dacproposals::receive(name from, name to, asset quantity, string memo) {
+        if (to != _self || from == "eosio"_n || from == "eosio.ram"_n || from == "eosio.stake"_n) {
+            return;
+        }
+
+        deposits_table deposits(get_self(), get_self().value);
+        auto           existing = deposits.find(from.value);
+
+        if (existing == deposits.end()) {
+            deposits.emplace(get_self(), [&](deposit_info &d) {
+                d.account = from;
+                d.deposit = extended_asset(quantity, get_first_receiver());
+            });
+        } else {
+            check(get_first_receiver() == existing->deposit.contract &&
+                      quantity.symbol == existing->deposit.quantity.symbol,
+                "ERR:EXISTING_DEPOSIT_WITH_DIFFERENT_TOKEN::There is an existing deposit with a different token, please call refund and try again.");
+            deposits.modify(existing, same_payer, [&](auto &d) {
+                d.deposit = extended_asset(d.deposit.quantity + quantity, d.deposit.contract);
+            });
+        }
+    }
+
+    void dacproposals::refund(name account) {
+        deposits_table deposits(get_self(), get_self().value);
+        auto           existing = deposits.find(account.value);
+        check(existing != deposits.end(), "ERR::NO_DEPOSIT::This account does not have any deposit");
+        //    print(existing->deposit.contract, " ", account, " ", existing->deposit.quantity);
+
+        string memo = "Return of proposal fee deposit.";
+        eosio::action(eosio::permission_level{get_self(), "active"_n}, existing->deposit.contract, "transfer"_n,
+            make_tuple(get_self(), account, existing->deposit.quantity, memo))
+            .send();
+
+        deposits.erase(existing);
+    }
+
+    void dacproposals::setpropfee(extended_asset new_proposal_fee, name dac_id) {
+        auto auth_account = dacdir::dac_for_id(dac_id).owner;
+        require_auth(auth_account);
+
+        auto current_configs = configs{get_self(), dac_id};
+        current_configs.set_proposal_fee(new_proposal_fee);
+    }
+
 } // namespace eosdac
