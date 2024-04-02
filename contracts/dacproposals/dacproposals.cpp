@@ -309,7 +309,6 @@ namespace eosdac {
 
         const auto current_configs       = configs{get_self(), dac_id};
         const auto min_proposal_duration = current_configs.get_min_proposal_duration();
-        print("min_proposal_duration: ", min_proposal_duration);
 
         check(now() >= prop.created_at + min_proposal_duration,
             "ERR::FINALIZE_TOO_EARLY::Cannot finalize the proposal before the minimum proposal duration has passed.");
