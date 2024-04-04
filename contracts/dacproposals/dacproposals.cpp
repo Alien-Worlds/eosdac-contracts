@@ -38,7 +38,7 @@ namespace eosdac {
         auto funding_source = dac.account_for_type(dacdir::SPENDINGS);
         auto auth           = dac.owner;
         check(arbiter != auth && arbiter != funding_source, "arbiter must be a third party");
-        auto current_configs = configs{get_self(), dac_id};
+        const auto current_configs = configs{get_self(), dac_id};
 
         const auto fee_required = current_configs.get_proposal_fee();
         if (fee_required.quantity.amount > 0) {
@@ -67,7 +67,7 @@ namespace eosdac {
                 .send();
         }
 
-        uint32_t approval_duration = current_configs.get_approval_duration();
+        const auto approval_duration = current_configs.get_approval_duration();
 
         proposals.emplace(proposer, [&](proposal &p) {
             p.proposal_id  = id;
@@ -81,7 +81,8 @@ namespace eosdac {
             p.state        = STATE_PENDING_APPROVAL;
             p.category     = category;
             p.job_duration = job_duration;
-            p.expiry       = time_point_sec(current_time_point().sec_since_epoch()) + approval_duration;
+            p.expiry       = now() + approval_duration;
+            p.created_at   = now();
         });
     }
 
@@ -326,18 +327,21 @@ namespace eosdac {
     }
 
     ACTION dacproposals::finalize(name proposal_id, name dac_id) {
-
-        proposal_table proposals(_self, dac_id.value);
-
+        proposal_table  proposals(_self, dac_id.value);
         const proposal &prop = proposals.get(proposal_id.value, "ERR::PROPOSAL_NOT_FOUND::Proposal not found.");
 
         check(prop.state == STATE_PENDING_FINALIZE || prop.state == STATE_HAS_ENOUGH_FIN_VOTES,
             "ERR::FINALIZE_WRONG_STATE::Proposal is not in the pending_finalize state therefore cannot be finalized.");
 
+        const auto current_configs       = configs{get_self(), dac_id};
+        const auto min_proposal_duration = current_configs.get_min_proposal_duration();
+
+        check(now() >= prop.created_at + min_proposal_duration,
+            "ERR::FINALIZE_TOO_EARLY::Cannot finalize the proposal before the minimum proposal duration has passed.");
+
         int16_t approved_count = count_votes(prop, finalize_approve, dac_id);
 
         print_f("Worker proposal % for finalizing with: % votes\n", proposal_id.value, approved_count);
-        auto current_configs = configs{get_self(), dac_id};
 
         check(approved_count >= current_configs.get_finalize_threshold(),
             "ERR::FINALIZE_INSUFFICIENT_VOTES::Insufficient votes on worker proposal to be finalized.");
@@ -409,8 +413,8 @@ namespace eosdac {
         });
     }
 
-    ACTION
-    dacproposals::comment(name commenter, name proposal_id, string comment, string comment_category, name dac_id) {
+    ACTION dacproposals::comment(
+        name commenter, name proposal_id, string comment, string comment_category, name dac_id) {
         require_auth(commenter);
         assertValidMember(commenter, dac_id);
 
@@ -432,6 +436,7 @@ namespace eosdac {
         current_configs.set_finalize_threshold(new_config.finalize_threshold);
         current_configs.set_approval_duration(new_config.approval_duration);
         current_configs.set_proposal_fee(new_config.proposal_fee);
+        current_configs.set_min_proposal_duration(new_config.min_proposal_duration);
     }
 
     // ACTION dacproposals::clearconfig(name dac_id) {
@@ -722,4 +727,10 @@ namespace eosdac {
         current_configs.set_proposal_fee(new_proposal_fee);
     }
 
+    void dacproposals::minduration(uint32_t new_min_proposal_duration, name dac_id) {
+        auto auth_account = dacdir::dac_for_id(dac_id).owner;
+        require_auth(auth_account);
+        auto current_configs = configs{get_self(), dac_id};
+        current_configs.set_min_proposal_duration(new_min_proposal_duration);
+    }
 } // namespace eosdac

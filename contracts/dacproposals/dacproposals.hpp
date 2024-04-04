@@ -87,6 +87,7 @@ namespace eosdac {
             bool           arbiter_agreed = false;
             name           state;
             time_point_sec expiry;
+            time_point_sec created_at;
             uint32_t       job_duration; // job duration in seconds
             uint16_t       category;
 
@@ -116,9 +117,10 @@ namespace eosdac {
 
         struct config {
             extended_asset proposal_fee;
-            uint8_t        proposal_threshold = 4;
-            uint8_t        finalize_threshold = 1;
-            uint32_t       approval_duration  = 30 * 24 * 60 * 60;
+            uint8_t        proposal_threshold    = 4;
+            uint8_t        finalize_threshold    = 1;
+            uint32_t       approval_duration     = 30 * 24 * 60 * 60;
+            uint32_t       min_proposal_duration = 0;
         };
 
         // using configs_table = eosio::singleton<"config"_n, config>;
@@ -128,7 +130,8 @@ namespace eosdac {
             PROPERTY(extended_asset, proposal_fee);
             PROPERTY(uint8_t, proposal_threshold); 
             PROPERTY(uint8_t, finalize_threshold);
-            PROPERTY(uint32_t, approval_duration);
+            PROPERTY(uint32_t, approval_duration); 
+            PROPERTY(uint32_t, min_proposal_duration); 
         );
         // clang-format on
 
@@ -162,6 +165,7 @@ namespace eosdac {
         ACTION refund(name account);
 
         [[eosio::on_notify("*::transfer")]] void receive(name from, name to, asset quantity, string memo);
+        ACTION                                   minduration(uint32_t new_min_proposal_duration, name dac_id);
 
       private:
         void    clearprop(const proposal &proposal, name dac_id);

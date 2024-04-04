@@ -57,6 +57,9 @@ describe('Dacproposals', () => {
 
   before(async () => {
     shared = await SharedTestObjects.getInstance();
+
+    await shared.daccustodian_contract.account.addCodePermission();
+
     planet = await AccountManager.createAccount('propplanet');
 
     await setup_planet();
@@ -123,6 +126,7 @@ describe('Dacproposals', () => {
                 quantity: '10.0000 PROPDAC',
                 contract: shared.dac_token_contract.name,
               },
+              min_proposal_duration: 0,
             },
             dacId,
             { from: otherAccount }
@@ -141,6 +145,7 @@ describe('Dacproposals', () => {
               quantity: '10.0000 PROPDAC',
               contract: shared.dac_token_contract.name,
             },
+            min_proposal_duration: 0,
           },
           dacId,
           { from: shared.auth_account }
@@ -172,6 +177,7 @@ describe('Dacproposals', () => {
                     },
                   ],
                 },
+                { key: 'min_proposal_duration', value: [0, 'uint32'] },
               ],
             },
           ]
@@ -201,7 +207,7 @@ describe('Dacproposals', () => {
         shared.dac_token_contract.accountsTable({
           scope: proposer1Account.name,
         }),
-        [{ balance: '0.0000 PROPDAC' }]
+        [{ balance: '20000.0000 PROPDAC' }]
       );
     });
     it('refund should work', async () => {
@@ -1238,6 +1244,7 @@ describe('Dacproposals', () => {
               quantity: '0.0000 PROPDAC',
               contract: shared.dac_token_contract.name,
             },
+            min_proposal_duration: 0,
           },
           dacId,
           { from: shared.auth_account }
@@ -1609,6 +1616,10 @@ describe('Dacproposals', () => {
           });
           context('with enough finalize_approve votes to approve', async () => {
             before(async () => {
+              await shared.dacproposals_contract.minduration(20, dacId, {
+                from: shared.auth_account,
+              });
+
               for (const custodian of propDacCustodians) {
                 await shared.dacproposals_contract.votepropfin(
                   custodian.name,
@@ -1630,7 +1641,16 @@ describe('Dacproposals', () => {
                 );
               }
             });
-            it('finalize should succeed', async () => {
+            it('before minimum duration is up, should fail', async () => {
+              await assertEOSErrorIncludesMessage(
+                shared.dacproposals_contract.finalize(newpropid, dacId, {
+                  from: proposer1Account,
+                }),
+                'ERR::FINALIZE_TOO_EARLY::'
+              );
+            });
+            it('after waiting, finalize should succeed', async () => {
+              await sleep(20000);
               await shared.dacproposals_contract.finalize(newpropid, dacId, {
                 from: proposer1Account,
               });
@@ -1719,6 +1739,7 @@ describe('Dacproposals', () => {
               quantity: '0.0000 PROPDAC',
               contract: shared.dac_token_contract.name,
             },
+            min_proposal_duration: 0,
           },
           dacId,
           { from: shared.auth_account }
@@ -2001,6 +2022,7 @@ describe('Dacproposals', () => {
               quantity: '0.0000 PROPDAC',
               contract: shared.dac_token_contract.name,
             },
+            min_proposal_duration: 0,
           },
           dacId,
           { from: shared.auth_account }
@@ -2270,6 +2292,7 @@ describe('Dacproposals', () => {
             quantity: '0.0000 PROPDAC',
             contract: shared.dac_token_contract.name,
           },
+          min_proposal_duration: 0,
         },
         dacId,
         { from: shared.auth_account }
@@ -2443,6 +2466,7 @@ describe('Dacproposals', () => {
             quantity: '0.0000 PROPDAC',
             contract: shared.dac_token_contract.name,
           },
+          min_proposal_duration: 0,
         },
         dacId,
         { from: shared.auth_account }
@@ -2558,6 +2582,7 @@ describe('Dacproposals', () => {
                 quantity: '0.0000 PROPDAC',
                 contract: shared.dac_token_contract.name,
               },
+              min_proposal_duration: 0,
             },
             dacId,
             { from: shared.auth_account }
