@@ -58,8 +58,6 @@ describe('Dacproposals', () => {
   before(async () => {
     shared = await SharedTestObjects.getInstance();
 
-    await shared.daccustodian_contract.account.addCodePermission();
-
     planet = await AccountManager.createAccount('propplanet');
 
     await setup_planet();
@@ -211,14 +209,16 @@ describe('Dacproposals', () => {
       );
     });
     it('refund should work', async () => {
-      await shared.dacproposals_contract.refund(proposer1Account.name);
+      await shared.dacproposals_contract.refund(proposer1Account.name, {
+        from: proposer1Account,
+      });
     });
-    it('should refund', async () => {
+    it('should fully refund the deposited amount', async () => {
       await assertRowsEqual(
         shared.dac_token_contract.accountsTable({
-          scope: proposer1Account,
+          scope: proposer1Account.name,
         }),
-        [{ balance: '10.0000 PROPDAC' }]
+        [{ balance: '20010.0000 PROPDAC' }]
       );
     });
   });
@@ -1670,7 +1670,7 @@ describe('Dacproposals', () => {
                 shared.dac_token_contract.accountsTable({
                   scope: proposer1Account.name,
                 }),
-                [{ balance: '20000.0000 PROPDAC' }]
+                [{ balance: '20010.0000 PROPDAC' }]
               );
             });
             it('dacescrow should have returned the arbiter funds', async () => {

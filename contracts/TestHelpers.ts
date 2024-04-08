@@ -99,6 +99,7 @@ export class SharedTestObjects {
       ContractDeployer.deployWithName('daccustodian', 'daccustodian'),
       'created daccustodian'
     );
+
     this.dac_token_contract = await debugPromise(
       ContractDeployer.deployWithName('eosdactokens', 'token.worlds'),
       'created eosdactokens'
@@ -107,6 +108,8 @@ export class SharedTestObjects {
       ContractDeployer.deployWithName('dacproposals', 'dacproposals'),
       'created dacproposals'
     );
+    await this.dacproposals_contract.account.addCodePermission();
+
     this.dacescrow_contract = await debugPromise(
       ContractDeployer.deployWithName('dacescrow', 'dacescrow'),
       'created dacescrow'
