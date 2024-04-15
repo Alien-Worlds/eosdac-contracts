@@ -234,12 +234,27 @@ ACTION daccustodian::claimbudget(const name &dac_id) {
         "Claimbudget can only be called once per period");
     const auto treasury_account = dac.account_for_type(dacdir::TREASURY);
 
+    const auto prop_budget_percentage = globals.maybe_get_prop_budget_percentage();
+
+    if (prop_budget_percentage.has_value()) {
+        const auto treasury_balance           = balance_for_type(dac, dacdir::TREASURY);
+        const auto prop_allocation_for_period = treasury_balance * *prop_budget_percentage / 10000;
+        const auto prop_rounded_allocation_for_period =
+            std::max(prop_allocation_for_period, asset{100000, symbol{"TLM", 4}});
+        const auto prop_amount_to_transfer = std::min(treasury_balance, prop_rounded_allocation_for_period);
+        const auto prop_recipient          = dac.account_for_type(dacdir::PROP_FUNDS);
+
+        if (prop_amount_to_transfer.amount > 0) {
+            action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
+                make_tuple(treasury_account, prop_recipient, prop_amount_to_transfer, "period proposal budget"s))
+                .send();
+        }
+    }
     const auto spendings_account = dac.account_for_type_maybe(dacdir::SPENDINGS);
     if (!spendings_account && !auth_account) {
         return;
     }
     const auto recipient         = spendings_account ? *spendings_account : auth_account;
-    const auto auth_balance      = eosdac::get_balance_graceful(auth_account, TLM_TOKEN_CONTRACT, TLM_SYM);
     const auto treasury_balance  = balance_for_type(dac, dacdir::TREASURY);
     const auto budget_percentage = get_budget_percentage(dac_id, globals);
 

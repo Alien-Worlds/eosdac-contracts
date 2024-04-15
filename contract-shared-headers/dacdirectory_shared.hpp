@@ -67,6 +67,7 @@ namespace eosdac {
              */
             REFERENDUM = 10,
             SPENDINGS  = 11, // Account to hold all the spending allowance for the current period.
+            PROP_FUNDS = 12, // Account to hold all the Proposal funds allowance.
             EXTERNAL   = 254,
             OTHER      = 255
         };
