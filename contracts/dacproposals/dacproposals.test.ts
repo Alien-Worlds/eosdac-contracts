@@ -57,6 +57,7 @@ describe('Dacproposals', () => {
 
   before(async () => {
     shared = await SharedTestObjects.getInstance();
+
     planet = await AccountManager.createAccount('propplanet');
 
     await setup_planet();
@@ -119,6 +120,10 @@ describe('Dacproposals', () => {
               proposal_threshold: 7,
               finalize_threshold: 5,
               approval_duration: 130,
+              proposal_fee: {
+                quantity: '10.0000 PROPDAC',
+                contract: shared.dac_token_contract.name,
+              },
               min_proposal_duration: 0,
             },
             dacId,
@@ -134,6 +139,10 @@ describe('Dacproposals', () => {
             proposal_threshold: proposeApproveTheshold,
             finalize_threshold: 3,
             approval_duration: 130,
+            proposal_fee: {
+              quantity: '10.0000 PROPDAC',
+              contract: shared.dac_token_contract.name,
+            },
             min_proposal_duration: 0,
           },
           dacId,
@@ -141,6 +150,10 @@ describe('Dacproposals', () => {
         );
       });
       it('should have correct config in config table', async () => {
+        const xxx = await shared.dacproposals_contract.configsTable({
+          scope: dacId,
+        });
+        console.log(JSON.stringify(xxx, null, 2));
         await assertRowsEqual(
           shared.dacproposals_contract.configsTable({ scope: dacId }),
           [
@@ -152,12 +165,61 @@ describe('Dacproposals', () => {
                   value: [proposeApproveTheshold, 'uint8'],
                 },
                 { key: 'finalize_threshold', value: [3, 'uint8'] },
+                {
+                  key: 'proposal_fee',
+                  value: [
+                    'extended_asset',
+                    {
+                      quantity: '10.0000 PROPDAC',
+                      contract: 'token.worlds',
+                    },
+                  ],
+                },
                 { key: 'min_proposal_duration', value: [0, 'uint32'] },
               ],
             },
           ]
         );
       });
+    });
+  });
+  context('refund', async () => {
+    before(async () => {
+      await shared.dac_token_contract.transfer(
+        shared.tokenIssuer.name,
+        proposer1Account.name,
+        `10.0000 PROPDAC`,
+        '',
+        { from: shared.tokenIssuer }
+      );
+      await shared.dac_token_contract.transfer(
+        proposer1Account.name,
+        shared.dacproposals_contract.name,
+        `10.0000 PROPDAC`,
+        '',
+        { from: proposer1Account }
+      );
+    });
+    it('before refund, should have 0 balance', async () => {
+      await assertRowsEqual(
+        shared.dac_token_contract.accountsTable({
+          scope: proposer1Account.name,
+        }),
+        [{ balance: '20000.0000 PROPDAC' }]
+      );
+    });
+    it('refund should work', async () => {
+      await shared.dacproposals_contract.refund(proposer1Account.name, {
+        from: proposer1Account,
+      });
+    });
+    it('should fully refund the deposited amount', async () => {
+      await assertRowsEqual(
+        shared.dac_token_contract.accountsTable({
+          scope: proposer1Account.name,
+        }),
+        [{ balance: '20010.0000 PROPDAC' }]
+      );
     });
   });
   context('create proposal', async () => {
@@ -282,7 +344,87 @@ describe('Dacproposals', () => {
           );
         });
       });
+      context('without fee deposit', async () => {
+        it('should fail with fee required error', async () => {
+          await assertEOSErrorIncludesMessage(
+            shared.dacproposals_contract.createprop(
+              proposer1Account.name,
+              'title',
+              'summary',
+              arbiter.name,
+              { quantity: '100.0000 EOS', contract: 'eosio.token' },
+              {
+                quantity: '10.0000 PROPDAC',
+                contract: shared.dac_token_contract.name,
+              },
+              proposalHash,
+              newpropid,
+              category,
+              150,
+              dacId,
+              { from: proposer1Account }
+            ),
+            'ERR::FEE_REQUIRED::'
+          );
+        });
+      });
+      context('with not enough deposited', async () => {
+        before(async () => {
+          await shared.dac_token_contract.transfer(
+            shared.tokenIssuer.name,
+            proposer1Account.name,
+            `9.0000 PROPDAC`,
+            '',
+            { from: shared.tokenIssuer }
+          );
+          await shared.dac_token_contract.transfer(
+            proposer1Account.name,
+            shared.dacproposals_contract.name,
+            `9.0000 PROPDAC`,
+            '',
+            { from: proposer1Account }
+          );
+        });
+        it('should throw not enough deposited error', async () => {
+          await assertEOSErrorIncludesMessage(
+            shared.dacproposals_contract.createprop(
+              proposer1Account.name,
+              'title',
+              'summary',
+              arbiter.name,
+              { quantity: '100.0000 EOS', contract: 'eosio.token' },
+              {
+                quantity: '10.0000 PROPDAC',
+                contract: shared.dac_token_contract.name,
+              },
+              proposalHash,
+              newpropid,
+              category,
+              150,
+              dacId,
+              { from: proposer1Account }
+            ),
+            'ERR::INSUFFICIENT_FEE::'
+          );
+        });
+      });
       context('with valid params', async () => {
+        before(async () => {
+          await shared.dac_token_contract.transfer(
+            shared.tokenIssuer.name,
+            proposer1Account.name,
+            `1.0000 PROPDAC`,
+            '',
+            { from: shared.tokenIssuer }
+          );
+          await shared.dac_token_contract.transfer(
+            proposer1Account.name,
+            shared.dacproposals_contract.name,
+            `1.0000 PROPDAC`,
+            '',
+            { from: proposer1Account }
+          );
+        });
         it('should succeed', async () => {
           await shared.dacproposals_contract.createprop(
             proposer1Account.name,
@@ -300,8 +442,15 @@ describe('Dacproposals', () => {
             150,
             dacId,
             { from: proposer1Account }
-          ),
-            '';
+          );
+        });
+        it('should transfer the fee to dao account', async () => {
+          await assertRowsEqual(
+            shared.dac_token_contract.accountsTable({
+              scope: shared.auth_account.name,
+            }),
+            [{ balance: '10.0000 PROPDAC' }]
+          );
         });
       });
       context('with duplicate id', async () => {
@@ -333,6 +482,17 @@ describe('Dacproposals', () => {
         });
       });
       context('with valid params as an additional proposal', async () => {
+        before(async () => {
+          // reset fee to 0 for the rest of the tests
+          await shared.dacproposals_contract.setpropfee(
+            {
+              contract: shared.dac_token_contract.name,
+              quantity: '0.0000 PROPDAC',
+            },
+            dacId,
+            { from: shared.auth_account }
+          );
+        });
         it('should succeed', async () => {
           await shared.dacproposals_contract.createprop(
             proposer1Account.name,
@@ -1080,6 +1240,10 @@ describe('Dacproposals', () => {
             proposal_threshold: proposeApproveTheshold,
             finalize_threshold: 5,
             approval_duration: 3, // set short for expiry of the
+            proposal_fee: {
+              quantity: '0.0000 PROPDAC',
+              contract: shared.dac_token_contract.name,
+            },
             min_proposal_duration: 0,
           },
           dacId,
@@ -1506,7 +1670,7 @@ describe('Dacproposals', () => {
                 shared.dac_token_contract.accountsTable({
                   scope: proposer1Account.name,
                 }),
-                [{ balance: '20000.0000 PROPDAC' }]
+                [{ balance: '20010.0000 PROPDAC' }]
               );
             });
             it('dacescrow should have returned the arbiter funds', async () => {
@@ -1571,6 +1735,10 @@ describe('Dacproposals', () => {
             proposal_threshold: proposeApproveTheshold,
             finalize_threshold: 5,
             approval_duration: 30,
+            proposal_fee: {
+              quantity: '0.0000 PROPDAC',
+              contract: shared.dac_token_contract.name,
+            },
             min_proposal_duration: 0,
           },
           dacId,
@@ -1850,6 +2018,10 @@ describe('Dacproposals', () => {
             proposal_threshold: proposeApproveTheshold,
             finalize_threshold: 5,
             approval_duration: 30,
+            proposal_fee: {
+              quantity: '0.0000 PROPDAC',
+              contract: shared.dac_token_contract.name,
+            },
             min_proposal_duration: 0,
           },
           dacId,
@@ -2116,6 +2288,10 @@ describe('Dacproposals', () => {
           proposal_threshold: proposeApproveTheshold,
           finalize_threshold: 5,
           approval_duration: 30,
+          proposal_fee: {
+            quantity: '0.0000 PROPDAC',
+            contract: shared.dac_token_contract.name,
+          },
           min_proposal_duration: 0,
         },
         dacId,
@@ -2286,6 +2462,10 @@ describe('Dacproposals', () => {
           proposal_threshold: proposeApproveTheshold,
           finalize_threshold: 5,
           approval_duration: 30,
+          proposal_fee: {
+            quantity: '0.0000 PROPDAC',
+            contract: shared.dac_token_contract.name,
+          },
           min_proposal_duration: 0,
         },
         dacId,
@@ -2398,6 +2578,10 @@ describe('Dacproposals', () => {
               proposal_threshold: proposeApproveTheshold,
               finalize_threshold: 5,
               approval_duration: 130,
+              proposal_fee: {
+                quantity: '0.0000 PROPDAC',
+                contract: shared.dac_token_contract.name,
+              },
               min_proposal_duration: 0,
             },
             dacId,

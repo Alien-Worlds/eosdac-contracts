@@ -61,6 +61,20 @@ namespace eosdac {
         };
 
       public:
+        struct [[eosio::table("deposits"), eosio::contract("dacproposals")]] deposit_info {
+            name           account;
+            extended_asset deposit;
+
+            uint64_t primary_key() const {
+                return account.value;
+            }
+            uint128_t by_sym() const {
+                return (uint128_t{deposit.contract.value} << 64) | deposit.get_extended_symbol().get_symbol().raw();
+            };
+        };
+        using deposits_table = eosio::multi_index<"deposits"_n, deposit_info,
+            indexed_by<"bysym"_n, const_mem_fun<deposit_info, uint128_t, &deposit_info::by_sym>>>;
+
         TABLE proposal {
             name           proposal_id;
             name           proposer;
@@ -102,16 +116,18 @@ namespace eosdac {
             eosio::indexed_by<"category"_n, eosio::const_mem_fun<proposal, uint64_t, &proposal::category_key>>>;
 
         struct config {
-            uint8_t  proposal_threshold    = 4;
-            uint8_t  finalize_threshold    = 1;
-            uint32_t approval_duration     = 30 * 24 * 60 * 60;
-            uint32_t min_proposal_duration = 0;
+            extended_asset proposal_fee;
+            uint8_t        proposal_threshold    = 4;
+            uint8_t        finalize_threshold    = 1;
+            uint32_t       approval_duration     = 30 * 24 * 60 * 60;
+            uint32_t       min_proposal_duration = 0;
         };
 
         // using configs_table = eosio::singleton<"config"_n, config>;
 
         // clang-format off
         SINGLETON(configs, dacproposals, 
+            PROPERTY(extended_asset, proposal_fee);
             PROPERTY(uint8_t, proposal_threshold); 
             PROPERTY(uint8_t, finalize_threshold);
             PROPERTY(uint32_t, approval_duration); 
@@ -145,7 +161,11 @@ namespace eosdac {
         // ACTION clearconfig(name dac_id);
         ACTION clearexpprop(name proposal_id, name dac_id);
         ACTION updpropvotes(name proposal_id, name dac_id);
-        ACTION minduration(uint32_t new_min_proposal_duration, name dac_id);
+        ACTION setpropfee(extended_asset new_proposal_fee, name dac_id);
+        ACTION refund(name account);
+
+        [[eosio::on_notify("*::transfer")]] void receive(name from, name to, asset quantity, string memo);
+        ACTION                                   minduration(uint32_t new_min_proposal_duration, name dac_id);
 
       private:
         void    clearprop(const proposal &proposal, name dac_id);
