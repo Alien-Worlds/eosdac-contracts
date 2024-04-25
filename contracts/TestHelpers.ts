@@ -968,6 +968,7 @@ export enum Account_type {
   ACTIVATION = 9,
   REFERENDUM = 10,
   SPENDINGS = 11,
+  PROP_FUNDS = 12,
   EXTERNAL = 254,
   OTHER = 255,
 }
