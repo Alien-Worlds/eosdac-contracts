@@ -249,29 +249,32 @@ ACTION daccustodian::claimbudget(const name &dac_id) {
                 make_tuple(treasury_account, prop_recipient, prop_amount_to_transfer, "period proposal budget"s))
                 .send();
         }
-    }
-    const auto spendings_account = dac.account_for_type_maybe(dacdir::SPENDINGS);
-    if (!spendings_account && !auth_account) {
-        return;
-    }
-    const auto recipient         = spendings_account ? *spendings_account : auth_account;
-    const auto treasury_balance  = balance_for_type(dac, dacdir::TREASURY);
-    const auto budget_percentage = get_budget_percentage(dac_id, globals);
+    } else {
+        const auto spendings_account = dac.account_for_type_maybe(dacdir::SPENDINGS);
 
-    // percentage value is scaled by 100, so to calculate percent we need to divide by (100 * 100 == 10000)
-    const auto allocation_for_period = treasury_balance * budget_percentage / 10000;
+        if (!spendings_account && !auth_account) {
+            return;
+        }
 
-    // if the calculated allocation_for_period is very small round it up to 10 TLM or the full treasury balance to
-    // avoid dust transactions for low percentage/balances in treasury.
-    const auto rounded_allocation_for_period = std::max(allocation_for_period, asset{100000, symbol{"TLM", 4}});
+        const auto recipient         = spendings_account ? *spendings_account : auth_account;
+        const auto treasury_balance  = balance_for_type(dac, dacdir::TREASURY);
+        const auto budget_percentage = get_budget_percentage(dac_id, globals);
 
-    // Because this has been rounded up, ensure we don't attempt to transfer more than the treasury balance.
-    const auto amount_to_transfer = std::min(treasury_balance, rounded_allocation_for_period);
+        // percentage value is scaled by 100, so to calculate percent we need to divide by (100 * 100 == 10000)
+        const auto allocation_for_period = treasury_balance * budget_percentage / 10000;
 
-    if (amount_to_transfer.amount > 0) {
-        action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
-            make_tuple(treasury_account, recipient, amount_to_transfer, "period budget"s))
-            .send();
+        // if the calculated allocation_for_period is very small round it up to 10 TLM or the full treasury balance to
+        // avoid dust transactions for low percentage/balances in treasury.
+        const auto rounded_allocation_for_period = std::max(allocation_for_period, asset{100000, symbol{"TLM", 4}});
+
+        // Because this has been rounded up, ensure we don't attempt to transfer more than the treasury balance.
+        const auto amount_to_transfer = std::min(treasury_balance, rounded_allocation_for_period);
+
+        if (amount_to_transfer.amount > 0) {
+            action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
+                make_tuple(treasury_account, recipient, amount_to_transfer, "period budget"s))
+                .send();
+        }
     }
 
     globals.set_lastclaimbudgettime(time_point_sec(current_time_point()));
