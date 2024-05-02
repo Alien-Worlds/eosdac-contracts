@@ -65,7 +65,7 @@ void daccustodian::assertPeriodTime(const dacglobals &globals) {
 void daccustodian::assertPendingPeriodTime(const dacglobals &globals) {
     time_point_sec now                  = time_point_sec(eosio::current_time_point());
     uint32_t pending_period_block_count = (now - globals.get_pending_period_time().sec_since_epoch()).sec_since_epoch();
-    check(pending_period_block_count > globals.get_pending_period_delay(),
+    check(pending_period_block_count >= globals.get_pending_period_delay(),
         "ERR::NEWPERIOD_PENDING_EARLY::New period is being called too soon while in pending phase. Pending length is %s periodBlockCount: %s",
         globals.get_pending_period_delay(), pending_period_block_count);
 }
