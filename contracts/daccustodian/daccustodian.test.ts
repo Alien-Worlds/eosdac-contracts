@@ -1944,11 +1944,11 @@ describe('Daccustodian', () => {
 
               let pendingCusts =
                 await shared.daccustodian_contract.pendingcustsTable({
-                scope: dacId,
-                limit: 100,
-                indexPosition: 2, // bydecayed index
-                keyType: 'i64',
-              });
+                  scope: dacId,
+                  limit: 100,
+                  indexPosition: 2, // bydecayed index
+                  keyType: 'i64',
+                });
 
               const candidates = res1.rows.map((x) => {
                 return {
@@ -3685,6 +3685,164 @@ describe('Daccustodian', () => {
           }),
           table_before
         );
+      });
+    });
+  });
+
+  context('pending period delay 0', async () => {
+    let dacId = 'perdelaydac';
+    let regMembers: Account[];
+    let newUser1: Account;
+    let candidates: Account[];
+    let tlm_token_contract: Account;
+
+    before(async () => {
+      await shared.initDac(dacId, '4,PERDDAC', '1000000.0000 PERDDAC');
+      await shared.updateconfig(dacId, '12.0000 PERDDAC');
+      await shared.dac_token_contract.stakeconfig(
+        { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+        '4,PERDDAC',
+        { from: shared.auth_account }
+      );
+
+      // With 16 voting members with 2000 each and a threshold of 31 percent
+      // this will total to 320_000 vote value which will be enough to start the DAC
+      regMembers = await shared.getRegMembers(dacId, '20000.0000 PERDDAC');
+      candidates = await shared.getStakeObservedCandidates(
+        dacId,
+        '12.0000 PERDDAC'
+      );
+      await shared.voteForCustodians(regMembers, candidates, dacId);
+
+      await shared.daccustodian_contract.updateconfige(
+        {
+          numelected: 5,
+          maxvotes: 4,
+          requested_pay_max: {
+            contract: 'eosio.token',
+            quantity: '0.0000 EOS',
+          },
+          periodlength: 2,
+          pending_period_delay: 2,
+          initial_vote_quorum_percent: 31,
+          vote_quorum_percent: 15,
+          auth_threshold_high: 4,
+          auth_threshold_mid: 3,
+          auth_threshold_low: 2,
+          lockupasset: {
+            contract: shared.dac_token_contract.account.name,
+            quantity: '12.0000 PERDDAC',
+          },
+          should_pay_via_service_provider: false,
+          lockup_release_time_delay: 1233,
+          token_supply_theshold: 10000001,
+        },
+        dacId,
+        { from: shared.auth_account }
+      );
+    });
+
+    context('when newperiod twice with > 0 period delay', async () => {
+      it('should succeed to execute new period in one transaction', async () => {
+        await assertEOSErrorIncludesMessage(
+          EOSManager.transact({
+            actions: [
+              {
+                account: shared.daccustodian_contract.account.name,
+                name: 'newperiod',
+                authorization: [
+                  {
+                    actor: regMembers[0].name,
+                    permission: 'active',
+                  },
+                ],
+                data: {
+                  dac_id: dacId,
+                  message: 'initial new period',
+                },
+              },
+              {
+                account: shared.daccustodian_contract.account.name,
+                name: 'newperiod',
+                authorization: [
+                  {
+                    actor: regMembers[0].name,
+                    permission: 'active',
+                  },
+                ],
+                data: {
+                  dac_id: dacId,
+                  message: 'initial new period',
+                },
+              },
+            ],
+          }),
+          'ERR::NEWPERIOD_PENDING_EARLY'
+        );
+      });
+    });
+    context('newperiod twice with 0 period delay ', async () => {
+      before(async () => {
+        await shared.daccustodian_contract.updateconfige(
+          {
+            numelected: 5,
+            maxvotes: 4,
+            requested_pay_max: {
+              contract: 'eosio.token',
+              quantity: '0.0000 EOS',
+            },
+            periodlength: 2,
+            pending_period_delay: 0,
+            initial_vote_quorum_percent: 31,
+            vote_quorum_percent: 15,
+            auth_threshold_high: 4,
+            auth_threshold_mid: 3,
+            auth_threshold_low: 2,
+            lockupasset: {
+              contract: shared.dac_token_contract.account.name,
+              quantity: '12.0000 PERDDAC',
+            },
+            should_pay_via_service_provider: false,
+            lockup_release_time_delay: 1233,
+            token_supply_theshold: 10000001,
+          },
+          dacId,
+          { from: shared.auth_account }
+        );
+      });
+      it('should succeed to execute new period in one transaction', async () => {
+        await EOSManager.transact({
+          actions: [
+            {
+              account: shared.daccustodian_contract.account.name,
+              name: 'newperiod',
+              authorization: [
+                {
+                  actor: regMembers[0].name,
+                  permission: 'active',
+                },
+              ],
+              data: {
+                dac_id: dacId,
+                message: 'initial new period',
+              },
+            },
+            {
+              account: shared.daccustodian_contract.account.name,
+              name: 'newperiod',
+              authorization: [
+                {
+                  actor: regMembers[0].name,
+                  permission: 'active',
+                },
+              ],
+              data: {
+                dac_id: dacId,
+                message: 'initial new period',
+              },
+            },
+          ],
+        });
       });
     });
   });
