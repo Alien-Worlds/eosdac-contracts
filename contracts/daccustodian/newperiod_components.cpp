@@ -249,16 +249,17 @@ ACTION daccustodian::claimbudget(const name &dac_id) {
                 make_tuple(treasury_account, prop_recipient, prop_amount_to_transfer, "period proposal budget"s))
                 .send();
         }
-    } else {
-        const auto spendings_account = dac.account_for_type_maybe(dacdir::SPENDINGS);
+    }
+    const auto spendings_account = dac.account_for_type_maybe(dacdir::SPENDINGS);
 
-        if (!spendings_account && !auth_account) {
-            return;
-        }
+    if (!spendings_account && !auth_account) {
+        return;
+    }
 
-        const auto recipient         = spendings_account ? *spendings_account : auth_account;
-        const auto treasury_balance  = balance_for_type(dac, dacdir::TREASURY);
-        const auto budget_percentage = get_budget_percentage(dac_id, globals);
+    const auto recipient         = spendings_account ? *spendings_account : auth_account;
+    const auto treasury_balance  = balance_for_type(dac, dacdir::TREASURY);
+    const auto budget_percentage = get_budget_percentage(dac_id, globals);
+    if (budget_percentage) {
 
         // percentage value is scaled by 100, so to calculate percent we need to divide by (100 * 100 == 10000)
         const auto allocation_for_period = treasury_balance * budget_percentage / 10000;
@@ -276,7 +277,6 @@ ACTION daccustodian::claimbudget(const name &dac_id) {
                 .send();
         }
     }
-
     globals.set_lastclaimbudgettime(time_point_sec(current_time_point()));
 }
 
@@ -385,8 +385,9 @@ uint16_t daccustodian::get_budget_percentage(const name &dac_id, const dacglobal
 
         const auto index_key = dacdir::nftcache::template_and_value_key_ascending(BUDGET_SCHEMA, 0);
         const auto itr       = index.lower_bound(index_key);
-        check(itr != index.end() && itr->schema_name == BUDGET_SCHEMA, "Dac with ID %s does not own any budget NFTs",
-            dac_id);
+        if (itr == index.end() || itr->schema_name != BUDGET_SCHEMA) {
+            return 0; // Return 0 if no budget NFTs are present
+        }
 
         return itr->value;
     }

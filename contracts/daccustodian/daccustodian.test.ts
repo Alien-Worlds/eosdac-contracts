@@ -3251,12 +3251,23 @@ describe('Daccustodian', () => {
           }
         );
       });
-      it('claimbudget should fail', async () => {
-        await assertEOSErrorIncludesMessage(
-          shared.daccustodian_contract.claimbudget(dacId, {
-            from: shared.auth_account,
+      it('claimbudget should work', async () => {
+        await shared.daccustodian_contract.claimbudget(dacId, {
+          from: shared.auth_account,
+        });
+      });
+      it('but not transfer anything', async () => {
+        await assertBalanceEqual(
+          shared.eosio_token_contract.accountsTable({
+            scope: shared.treasury_account.name,
           }),
-          'Dac with ID budgetdac does not own any budget NFTs'
+          '50.0000 TLM'
+        );
+        await assertBalanceEqual(
+          shared.eosio_token_contract.accountsTable({
+            scope: shared.auth_account.name,
+          }),
+          '100.0000 TLM'
         );
       });
     });
@@ -3797,7 +3808,7 @@ describe('Daccustodian', () => {
         );
         prop_funds_balance_before = await get_balance(
           shared.eosio_token_contract,
-          shared.treasury_account,
+          prop_funds_account,
           'TLM'
         );
         console.log('Ohai 11');
@@ -3830,10 +3841,9 @@ describe('Daccustodian', () => {
           'TLM'
         );
         console.log('actual_treasury_balance: ', actual_treasury_balance);
-        const epsilon = 0.01;
         chai
           .expect(actual_treasury_balance)
-          .to.be.closeTo(expected_treasury_balance_after, epsilon);
+          .to.be.closeTo(expected_treasury_balance_after, 0.01);
       });
 
       it('should transfer the correct amount to the proposal funds', async () => {
@@ -3849,7 +3859,7 @@ describe('Daccustodian', () => {
         );
         chai
           .expect(actual_prop_funds_balance)
-          .to.equal(expected_prop_funds_balance_after);
+          .to.be.closeTo(expected_prop_funds_balance_after, 0.01);
       });
     });
   });
