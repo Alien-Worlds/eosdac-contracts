@@ -721,15 +721,20 @@ namespace eosdac {
 
     void dacproposals::setpropfee(extended_asset new_proposal_fee, name dac_id) {
         auto auth_account = dacdir::dac_for_id(dac_id).owner;
-        require_auth(auth_account);
-
+        if (!has_auth(get_self())) {
+            check(false, "ERR::AUTH_SELF::Only the contract account can call this action at this stage.");
+            require_auth(auth_account);
+        }
         auto current_configs = configs{get_self(), dac_id};
         current_configs.set_proposal_fee(new_proposal_fee);
     }
 
     void dacproposals::minduration(uint32_t new_min_proposal_duration, name dac_id) {
         auto auth_account = dacdir::dac_for_id(dac_id).owner;
-        require_auth(auth_account);
+        if (!has_auth(get_self())) {
+            check(false, "ERR::AUTH_SELF::Only the contract account can call this action at this stage.");
+            require_auth(auth_account);
+        }
         auto current_configs = configs{get_self(), dac_id};
         current_configs.set_min_proposal_duration(new_min_proposal_duration);
     }
