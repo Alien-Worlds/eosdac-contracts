@@ -3251,23 +3251,37 @@ describe('Daccustodian', () => {
           }
         );
       });
+      it('assert balances before', async () => {
+        await assertRowCount(
+          shared.eosio_token_contract.accountsTable({
+            scope: shared.treasury_account.name,
+          }),
+          0
+        );
+        await assertRowCount(
+          shared.eosio_token_contract.accountsTable({
+            scope: shared.auth_account.name,
+          }),
+          0
+        );
+      });
       it('claimbudget should work', async () => {
         await shared.daccustodian_contract.claimbudget(dacId, {
           from: shared.auth_account,
         });
       });
       it('but not transfer anything', async () => {
-        await assertBalanceEqual(
+        await assertRowCount(
           shared.eosio_token_contract.accountsTable({
             scope: shared.treasury_account.name,
           }),
-          '50.0000 TLM'
+          0
         );
-        await assertBalanceEqual(
+        await assertRowCount(
           shared.eosio_token_contract.accountsTable({
             scope: shared.auth_account.name,
           }),
-          '100.0000 TLM'
+          0
         );
       });
     });
