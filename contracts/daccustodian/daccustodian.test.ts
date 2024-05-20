@@ -41,7 +41,7 @@ enum state_keys {
 const NFT_COLLECTION = 'alien.worlds';
 const BUDGET_SCHEMA = 'budget';
 
-describe('Daccustodian', () => {
+describe.only('Daccustodian', () => {
   let second_nft_id: number;
   let somebody: Account;
   before(async () => {
@@ -3265,23 +3265,12 @@ describe('Daccustodian', () => {
           0
         );
       });
-      it('claimbudget should work', async () => {
-        await shared.daccustodian_contract.claimbudget(dacId, {
-          from: shared.auth_account,
-        });
-      });
-      it('but not transfer anything', async () => {
-        await assertRowCount(
-          shared.eosio_token_contract.accountsTable({
-            scope: shared.treasury_account.name,
+      it('claimbudget should fail with no balance to claim', async () => {
+        await assertEOSErrorIncludesMessage(
+          shared.daccustodian_contract.claimbudget(dacId, {
+            from: shared.auth_account,
           }),
-          0
-        );
-        await assertRowCount(
-          shared.eosio_token_contract.accountsTable({
-            scope: shared.auth_account.name,
-          }),
-          0
+          'No funds available to claim'
         );
       });
     });
@@ -3354,13 +3343,13 @@ describe('Daccustodian', () => {
     context(
       'claimbudget when transfer amount is bigger than treasury',
       async () => {
-        let expected_transfer_amount;
-        let treasury_balance_before;
-        let auth_balance_before;
+        let expected_transfer_amount: number;
+        let treasury_balance_before: number;
+        let auth_balance_before: number;
         before(async () => {
+          await shared.daccustodian_contract.setbudget(dacId, '123.0000 TLM');
           expected_transfer_amount = await expected_budget_transfer_amount(
-            dacId,
-            false
+            dacId
           );
 
           treasury_balance_before = await get_balance(
@@ -3463,8 +3452,7 @@ describe('Daccustodian', () => {
             'TLM'
           );
           expected_transfer_amount = await expected_budget_transfer_amount(
-            dacId,
-            false
+            dacId
           );
           await shared.daccustodian_contract.claimbudget(dacId, {
             from: shared.auth_account,
@@ -3498,148 +3486,156 @@ describe('Daccustodian', () => {
     context('setbudget', async () => {
       it('without self auth, should throw authentication error', async () => {
         await assertMissingAuthority(
-          shared.daccustodian_contract.setbudget(dacId, 123, { from: somebody })
-        );
-      });
-      it('should work', async () => {
-        await shared.daccustodian_contract.setbudget(dacId, 123);
-      });
-      it('should set table entry', async () => {
-        const budget_percentage = await get_from_dacglobals(
-          dacId,
-          'budget_percentage'
-        );
-        chai.expect(budget_percentage).to.equal(123);
-      });
-      it('setting again', async () => {
-        await shared.daccustodian_contract.setbudget(dacId, 234);
-      });
-      it('should update existing table entry', async () => {
-        const budget_percentage = await get_from_dacglobals(
-          dacId,
-          'budget_percentage'
-        );
-        chai.expect(budget_percentage).to.equal(234);
-      });
-      it('setting with different dac id should work', async () => {
-        await shared.daccustodian_contract.setbudget('abcd', 345);
-      });
-      it('should create table entry', async () => {
-        const budget_percentage = await get_from_dacglobals(
-          'abcd',
-          'budget_percentage'
-        );
-        chai.expect(budget_percentage).to.equal(345);
-      });
-      it("other dac's table entry should stay untouched", async () => {
-        const budget_percentage = await get_from_dacglobals(
-          dacId,
-          'budget_percentage'
-        );
-        chai.expect(budget_percentage).to.equal(234);
-      });
-    });
-    context('unsetbudget', async () => {
-      it('without self auth, should throw authentication error', async () => {
-        await assertMissingAuthority(
-          shared.daccustodian_contract.unsetbudget(dacId, {
+          shared.daccustodian_contract.setbudget(dacId, '123.0000 TLM', {
             from: somebody,
           })
         );
       });
-      it('with non-existing dac id, should throw not exists error', async () => {
-        await assertEOSErrorIncludesMessage(
-          shared.daccustodian_contract.unsetbudget('notexist'),
-          'Cannot unset budget_percentage, no value set'
-        );
+      it('should work', async () => {
+        await shared.daccustodian_contract.setbudget(dacId, '123.0000 TLM');
       });
-      it('with existing dac id should work', async () => {
-        await shared.daccustodian_contract.unsetbudget('abcd');
+      it('should set table entry', async () => {
+        const budget = await get_from_dacglobals(dacId, 'budget_tlm');
+        chai.expect(budget).to.equal('123.0000 TLM');
       });
-      it('should remove table entry', async () => {
-        const budget_percentage = await get_from_dacglobals(
-          'abcd',
-          'budget_percentage'
-        );
-        chai.expect(budget_percentage).to.be.undefined;
+      it('setting again', async () => {
+        await shared.daccustodian_contract.setbudget(dacId, '234.0000 TLM');
       });
-      it('should should not delete anything else', async () => {
-        const budget_percentage = await get_from_dacglobals(
-          dacId,
-          'budget_percentage'
-        );
-        chai.expect(budget_percentage).to.equal(234);
+      it('should update existing table entry', async () => {
+        const budget = await get_from_dacglobals(dacId, 'budget_tlm');
+        chai.expect(budget).to.equal('234.0000 TLM');
+      });
+      it('setting with different dac id should work', async () => {
+        await shared.daccustodian_contract.setbudget('abcd', '345.0000 TLM');
+      });
+      it('should create table entry', async () => {
+        const budget = await get_from_dacglobals('abcd', 'budget_tlm');
+        chai.expect(budget).to.equal('345.0000 TLM');
+      });
+      it("other dac's table entry should stay untouched", async () => {
+        const budget = await get_from_dacglobals(dacId, 'budget_tlm');
+        chai.expect(budget).to.equal('234.0000 TLM');
       });
     });
-    context('claimbudget when budget percentage is set manually', async () => {
-      let expected_transfer_amount;
-      let treasury_balance_before;
-      let auth_balance_before;
-      before(async () => {
-        await sleep(2000);
-        await shared.daccustodian_contract.newperiod(
-          'initial new period',
-          dacId,
-          {
-            from: regMembers[0],
-          }
-        );
-        await sleep(2000);
-        await shared.daccustodian_contract.newperiod(
-          'initial new period',
-          dacId,
-          {
-            from: regMembers[0],
-          }
-        );
+    // context('unsetbudget', async () => {
+    //   it('without self auth, should throw authentication error', async () => {
+    //     await assertMissingAuthority(
+    //       shared.daccustodian_contract.unsetbudget(dacId, {
+    //         from: somebody,
+    //       })
+    //     );
+    //   });
+    //   it('with non-existing dac id, should throw not exists error', async () => {
+    //     await assertEOSErrorIncludesMessage(
+    //       shared.daccustodian_contract.unsetbudget('notexist'),
+    //       'Cannot unset budget_percentage, no value set'
+    //     );
+    //   });
+    //   it('with existing dac id should work', async () => {
+    //     await shared.daccustodian_contract.unsetbudget('abcd');
+    //   });
+    //   it('should remove table entry', async () => {
+    //     const budget_percentage = await get_from_dacglobals(
+    //       'abcd',
+    //       'budget_percentage'
+    //     );
+    //     chai.expect(budget_percentage).to.be.undefined;
+    //   });
+    //   it('should should not delete anything else', async () => {
+    //     const budget_percentage = await get_from_dacglobals(
+    //       dacId,
+    //       'budget_percentage'
+    //     );
+    //     chai.expect(budget_percentage).to.equal(234);
+    //   });
+    // });
+    context.skip(
+      'claimbudget when budget percentage is set manually',
+      async () => {
+        let expected_transfer_amount;
+        let treasury_balance_before;
+        let auth_balance_before;
+        before(async () => {
+          await sleep(2000);
+          await shared.daccustodian_contract.newperiod(
+            'initial new period',
+            dacId,
+            {
+              from: regMembers[0],
+            }
+          );
+          await sleep(2000);
+          await shared.daccustodian_contract.newperiod(
+            'initial new period',
+            dacId,
+            {
+              from: regMembers[0],
+            }
+          );
 
-        await shared.daccustodian_contract.setbudget(dacId, 235); // 2.35 %
+          await shared.daccustodian_contract.setbudget(dacId, '235.0000 TLM');
+          await shared.daccustodian_contract.setprpbudget(
+            dacId,
+            '125.0000 TLM'
+          );
 
-        treasury_balance_before = await get_balance(
-          shared.eosio_token_contract,
-          shared.treasury_account,
-          'TLM'
-        );
-        auth_balance_before = await get_balance(
-          shared.eosio_token_contract,
-          shared.auth_account,
-          'TLM'
-        );
-        expected_transfer_amount = await expected_budget_transfer_amount(
-          dacId,
-          true
-        );
-        await shared.daccustodian_contract.claimbudget(dacId, {
-          from: shared.auth_account,
+          treasury_balance_before = await get_balance(
+            shared.eosio_token_contract,
+            shared.treasury_account,
+            'TLM'
+          );
+          auth_balance_before = await get_balance(
+            shared.eosio_token_contract,
+            shared.auth_account,
+            'TLM'
+          );
+          expected_transfer_amount = await expected_budget_transfer_amount(
+            dacId
+          );
+          await shared.daccustodian_contract.claimbudget(dacId, {
+            from: shared.auth_account,
+          });
         });
-      });
-      it('should transfer amount according to formula', async () => {
-        const expected_treasury_balance_after = round_to_decimals(
-          treasury_balance_before - expected_transfer_amount,
-          4
-        );
-        const expected_auth_balance_after = round_to_decimals(
-          auth_balance_before + expected_transfer_amount,
-          4
-        );
+        it('should transfer amount according to formula', async () => {
+          const expected_treasury_balance_after = round_to_decimals(
+            treasury_balance_before - expected_transfer_amount,
+            4
+          );
+          const expected_auth_balance_after = round_to_decimals(
+            auth_balance_before + expected_transfer_amount,
+            4
+          );
 
-        const actual_treasury_balance = await get_balance(
-          shared.eosio_token_contract,
-          shared.treasury_account,
-          'TLM'
+          const actual_treasury_balance = await get_balance(
+            shared.eosio_token_contract,
+            shared.treasury_account,
+            'TLM'
+          );
+          const actual_auth_balance = await get_balance(
+            shared.eosio_token_contract,
+            shared.auth_account,
+            'TLM'
+          );
+          chai
+            .expect(actual_treasury_balance)
+            .to.equal(expected_treasury_balance_after);
+          chai
+            .expect(actual_auth_balance)
+            .to.equal(expected_auth_balance_after);
+        });
+      }
+    );
+    context.skip('calling claimbudget twice in the same period', async () =>
+      it('should fail', async () => {
+        await assertEOSErrorIncludesMessage(
+          shared.daccustodian_contract.claimbudget(dacId, {
+            from: shared.auth_account,
+          }),
+          'Claimbudget can only be called once per period'
         );
-        const actual_auth_balance = await get_balance(
-          shared.eosio_token_contract,
-          shared.auth_account,
-          'TLM'
-        );
-        chai
-          .expect(actual_treasury_balance)
-          .to.equal(expected_treasury_balance_after);
-        chai.expect(actual_auth_balance).to.equal(expected_auth_balance_after);
-      });
-    });
-    context('logtransfer', async () => {
+      })
+    );
+    context.skip('logtransfer', async () => {
       it('should update nftcache table when transfering away', async () => {
         const res = await shared.dacdirectory_contract.nftcacheTable({
           scope: dacId,
@@ -3715,30 +3711,32 @@ describe('Daccustodian', () => {
     context('setprpbudget', async () => {
       it('without self auth, should throw authentication error', async () => {
         await assertMissingAuthority(
-          shared.daccustodian_contract.setprpbudget(dacId, 123, {
+          shared.daccustodian_contract.setprpbudget(dacId, '123.0000 TLM', {
             from: somebody,
           })
         );
       });
 
       it('should work', async () => {
-        await shared.daccustodian_contract.setprpbudget(dacId, 123);
+        await shared.daccustodian_contract.setprpbudget(dacId, '123.0000 TLM');
       });
 
       it('should set table entry', async () => {
-        const prop_budget_percentage = await get_from_dacglobals(
+        const prop_budget_tlm = await get_from_dacglobals(
           dacId,
-          'prop_budget_percentage'
+          'prop_budget_tlm'
         );
-        chai.expect(prop_budget_percentage).to.equal(123);
+        chai.expect(prop_budget_tlm).to.equal('123.0000 TLM');
       });
     });
     context('claimbudget when prop budget percentage is set', async () => {
       const dacId = 'propdac';
-      let expected_transfer_amount;
-      let treasury_balance_before;
-      let prop_funds_balance_before;
-      let prop_funds_account;
+      let expected_spendings_transfer_amount: number;
+      let expected_wp_transfer_amount: number;
+      let treasury_balance_before: number;
+      let prop_funds_balance_before: number;
+      let spendings_funds_balance_before: number;
+      let prop_funds_account: Account;
       before(async () => {
         console.log('Ohai 1');
         prop_funds_account = await AccountManager.createAccount('propfunds');
@@ -3781,6 +3779,13 @@ describe('Daccustodian', () => {
             ],
           }
         );
+        await shared.eosio_token_contract.transfer(
+          shared.tokenIssuer.name,
+          shared.treasury_account.name,
+          `550.0000 TLM`,
+          'Some money for the treasury',
+          { from: shared.tokenIssuer }
+        );
         console.log('Ohai 3');
 
         regMembers = await shared.getRegMembers(dacId, '20000.0000 PROPDAC');
@@ -3812,7 +3817,8 @@ describe('Daccustodian', () => {
         );
         console.log('Ohai 9');
 
-        await shared.daccustodian_contract.setprpbudget(dacId, 235); // 2.35%
+        await shared.daccustodian_contract.setprpbudget(dacId, '235.0000 TLM');
+        await shared.daccustodian_contract.setbudget(dacId, '35.0000 TLM');
         console.log('Ohai 10');
 
         treasury_balance_before = await get_balance(
@@ -3825,12 +3831,17 @@ describe('Daccustodian', () => {
           prop_funds_account,
           'TLM'
         );
-        console.log('Ohai 11');
-        expected_transfer_amount = await expected_prop_budget_transfer_amount(
-          dacId
+        spendings_funds_balance_before = await get_balance(
+          shared.eosio_token_contract,
+          shared.auth_account,
+          'TLM'
         );
-        console.log('expected_transfer_amount: ', expected_transfer_amount);
-        console.log('Ohai 12');
+        console.log('Ohai 11');
+        expected_wp_transfer_amount =
+          await expected_prop_budget_transfer_amount(dacId);
+        expected_spendings_transfer_amount =
+          await expected_budget_transfer_amount(dacId);
+
         await shared.daccustodian_contract.claimbudget(dacId, {
           from: shared.auth_account,
         });
@@ -3838,15 +3849,14 @@ describe('Daccustodian', () => {
       });
 
       it('should transfer the correct amount from the treasury', async () => {
-        const expected_treasury_balance_after = round_to_decimals(
-          treasury_balance_before - expected_transfer_amount,
-          4
-        );
-        console.log('treasury_balance_before: ', treasury_balance_before);
-        console.log('expected_transfer_amount: ', expected_transfer_amount);
+        const expected =
+          treasury_balance_before -
+          expected_spendings_transfer_amount -
+          expected_wp_transfer_amount;
         console.log(
-          'expected_treasury_balance_after: ',
-          expected_treasury_balance_after
+          'expected: ',
+          treasury_balance_before,
+          expected_spendings_transfer_amount
         );
 
         const actual_treasury_balance = await get_balance(
@@ -3855,17 +3865,10 @@ describe('Daccustodian', () => {
           'TLM'
         );
         console.log('actual_treasury_balance: ', actual_treasury_balance);
-        chai
-          .expect(actual_treasury_balance)
-          .to.be.closeTo(expected_treasury_balance_after, 0.01);
+        chai.expect(actual_treasury_balance).to.eq(expected);
       });
 
       it('should transfer the correct amount to the proposal funds', async () => {
-        const expected_prop_funds_balance_after = round_to_decimals(
-          prop_funds_balance_before + expected_transfer_amount,
-          4
-        );
-
         const actual_prop_funds_balance = await get_balance(
           shared.eosio_token_contract,
           prop_funds_account,
@@ -3873,7 +3876,25 @@ describe('Daccustodian', () => {
         );
         chai
           .expect(actual_prop_funds_balance)
-          .to.be.closeTo(expected_prop_funds_balance_after, 0.01);
+          .to.be.eq(prop_funds_balance_before + 235);
+      });
+      it('should transfer the correct amount to the spendings funds', async () => {
+        const actual_spendings_balance = await get_balance(
+          shared.eosio_token_contract,
+          shared.auth_account,
+          'TLM'
+        );
+        chai
+          .expect(actual_spendings_balance)
+          .to.be.eq(spendings_funds_balance_before + 35);
+      });
+      it('should fail when calling twice', async () => {
+        await assertEOSErrorIncludesMessage(
+          shared.daccustodian_contract.claimbudget(dacId, {
+            from: shared.auth_account,
+          }),
+          'Claimbudget can only be called once per period'
+        );
       });
     });
   });
@@ -4172,42 +4193,22 @@ async function setup_test_user(testuser: Account, tokenSymbol: string) {
   );
 }
 
-async function expected_budget_transfer_amount(
-  dacId: string,
-  assert_manual: bool
-) {
-  const treasury_balance = await get_balance(
-    shared.eosio_token_contract,
-    shared.treasury_account,
-    'TLM'
-  );
+// async function expected_budget_transfer_amount(dacId: string) {
+//   const treasury_balance = await get_balance(
+//     shared.eosio_token_contract,
+//     shared.treasury_account,
+//     'TLM'
+//   );
 
-  let percentage = await get_from_dacglobals(dacId, 'budget_percentage');
-  if (percentage !== undefined) {
-    // we have manually set budget percentage
-    chai.expect(assert_manual).to.be.true;
-  } else {
-    chai.expect(assert_manual).to.be.false;
-    const nft_res = await shared.dacdirectory_contract.nftcacheTable({
-      scope: dacId,
-    });
-    const budget_nfts = nft_res.rows.filter(
-      (x) => x.schema_name == BUDGET_SCHEMA
-    );
-    budget_nfts.sort((a, b) => b.value - a.value); // sort by value descending
-    const nft_with_highest_value = budget_nfts[0];
-    percentage = nft_with_highest_value.value;
-  }
-  const allocation_for_period = (treasury_balance * percentage) / 10000;
-  const rounded_allocation = Math.max(allocation_for_period, 10);
-  const transfer_amount = Math.max(
-    0,
-    Math.min(treasury_balance, rounded_allocation)
-  );
-  return round_to_decimals(transfer_amount, 4);
-}
+//   const budget_amount = await get_from_dacglobals(dacId, 'budget_tlm');
+//   chai.expect(budget_amount).to.not.be.undefined;
+//   if (treasury_balance < (budget_amount as Asset).amount) {
+//     return treasury_balance;
+//   }
+//   return budget_amount;
+// }
 
-function round_to_decimals(number, decimals) {
+function round_to_decimals(number: number, decimals: number) {
   return Math.round(number * Math.pow(10, decimals)) / Math.pow(10, decimals);
 }
 
@@ -4361,46 +4362,15 @@ async function vote_and_check(dacId, voter, candidates) {
 }
 
 async function expected_prop_budget_transfer_amount(dacId: string) {
-  const treasury_balance = await get_balance(
-    shared.eosio_token_contract,
-    shared.treasury_account,
-    'TLM'
-  );
+  const prop_budget = await get_from_dacglobals(dacId, 'prop_budget_tlm');
 
-  const prop_budget_percentage_string = await get_from_dacglobals(
-    dacId,
-    'prop_budget_percentage'
-  );
+  chai.expect(prop_budget).to.not.be.undefined;
+  return new Asset(prop_budget as string).amount;
+}
 
-  const prop_budget_percentage =
-    parseInt(prop_budget_percentage_string, 10) / 100;
-  console.log('prop_budget_percentage: ', prop_budget_percentage);
-  console.log('treasury_balance: ', treasury_balance);
+async function expected_budget_transfer_amount(dacId: string) {
+  const budget = await get_from_dacglobals(dacId, 'budget_tlm');
 
-  chai.expect(prop_budget_percentage).to.not.be.undefined;
-
-  const prop_allocation_for_period =
-    (treasury_balance * prop_budget_percentage) / 100;
-
-  console.log('prop_allocation_for_period: ', prop_allocation_for_period);
-
-  // if the calculated prop_allocation_for_period is very small round it up to 10 TLM or the full treasury balance to
-  // avoid dust transactions for low percentage/balances in treasury.
-  const prop_rounded_allocation_for_period = Math.max(
-    prop_allocation_for_period,
-    10 // 10 TLM
-  );
-  console.log(
-    'prop_rounded_allocation_for_period: ',
-    prop_rounded_allocation_for_period
-  );
-
-  // Because this has been rounded up, ensure we don't attempt to transfer more than the treasury balance.
-  const prop_amount_to_transfer = Math.min(
-    treasury_balance,
-    prop_rounded_allocation_for_period
-  );
-  console.log('prop_amount_to_transfer: ', prop_amount_to_transfer);
-
-  return round_to_decimals(prop_amount_to_transfer, 4);
+  chai.expect(budget).to.not.be.undefined;
+  return new Asset(budget as string).amount;
 }

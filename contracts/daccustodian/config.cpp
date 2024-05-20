@@ -302,23 +302,22 @@ ACTION daccustodian::settokensup(const uint64_t &token_supply_theshold, const na
     globals.set_token_supply_theshold(token_supply_theshold);
 }
 
-ACTION daccustodian::setbudget(const name &dac_id, const uint16_t percentage) {
+ACTION daccustodian::setbudget(const name &dac_id, const asset new_budget) {
     require_auth(get_self());
 
     auto globals = dacglobals{get_self(), dac_id};
-    globals.set_budget_percentage(percentage);
+    if (globals.maybe_get_budget_percentage().has_value()) {
+        globals.unset_budget_percentage();
+    }
+    globals.set_budget_tlm(new_budget);
 }
 
-ACTION daccustodian::setprpbudget(const name &dac_id, const uint16_t percentage) {
+ACTION daccustodian::setprpbudget(const name &dac_id, const asset new_budget) {
     require_auth(get_self());
 
     auto globals = dacglobals{get_self(), dac_id};
-    globals.set_prop_budget_percentage(percentage);
-}
-
-ACTION daccustodian::unsetbudget(const name &dac_id) {
-    require_auth(get_self());
-
-    auto globals = dacglobals{get_self(), dac_id};
-    globals.unset_budget_percentage();
+    if (globals.maybe_get_prop_budget_percentage().has_value()) {
+        globals.unset_prop_budget_percentage();
+    }
+    globals.set_prop_budget_tlm(new_budget);
 }

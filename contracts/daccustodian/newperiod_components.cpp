@@ -234,48 +234,37 @@ ACTION daccustodian::claimbudget(const name &dac_id) {
         "Claimbudget can only be called once per period");
     const auto treasury_account = dac.account_for_type(dacdir::TREASURY);
 
-    const auto prop_budget_percentage = globals.maybe_get_prop_budget_percentage();
+    const auto prop_budget = globals.get_prop_budget_tlm();
 
-    if (prop_budget_percentage.has_value()) {
-        const auto treasury_balance           = balance_for_type(dac, dacdir::TREASURY);
-        const auto prop_allocation_for_period = treasury_balance * *prop_budget_percentage / 10000;
-        const auto prop_rounded_allocation_for_period =
-            std::max(prop_allocation_for_period, asset{100000, symbol{"TLM", 4}});
-        const auto prop_amount_to_transfer = std::min(treasury_balance, prop_rounded_allocation_for_period);
-        const auto prop_recipient          = dac.account_for_type(dacdir::PROP_FUNDS);
+    auto treasury_balance = balance_for_type(dac, dacdir::TREASURY);
+    check(treasury_balance.amount > 0, "No funds available to claim");
 
-        if (prop_amount_to_transfer.amount > 0) {
-            action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
-                make_tuple(treasury_account, prop_recipient, prop_amount_to_transfer, "period proposal budget"s))
-                .send();
-        }
+    const auto prop_amount_to_transfer = std::min(treasury_balance, prop_budget);
+    const auto prop_recipient          = dac.account_for_type(dacdir::PROP_FUNDS);
+
+    if (prop_amount_to_transfer.amount > 0) {
+        action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
+            make_tuple(treasury_account, prop_recipient, prop_amount_to_transfer, "period proposal budget"s))
+            .send();
     }
+
     const auto spendings_account = dac.account_for_type_maybe(dacdir::SPENDINGS);
 
     if (!spendings_account && !auth_account) {
         return;
     }
 
-    const auto recipient         = spendings_account ? *spendings_account : auth_account;
-    const auto treasury_balance  = balance_for_type(dac, dacdir::TREASURY);
-    const auto budget_percentage = get_budget_percentage(dac_id, globals);
-    if (budget_percentage) {
+    const auto recipient = spendings_account ? *spendings_account : auth_account;
+    treasury_balance     = balance_for_type(dac, dacdir::TREASURY);
+    const auto budget    = globals.get_budget_tlm();
 
-        // percentage value is scaled by 100, so to calculate percent we need to divide by (100 * 100 == 10000)
-        const auto allocation_for_period = treasury_balance * budget_percentage / 10000;
+    // Because this has been rounded up, ensure we don't attempt to transfer more than the treasury balance.
+    const auto amount_to_transfer = std::min(treasury_balance, budget);
 
-        // if the calculated allocation_for_period is very small round it up to 10 TLM or the full treasury balance to
-        // avoid dust transactions for low percentage/balances in treasury.
-        const auto rounded_allocation_for_period = std::max(allocation_for_period, asset{100000, symbol{"TLM", 4}});
-
-        // Because this has been rounded up, ensure we don't attempt to transfer more than the treasury balance.
-        const auto amount_to_transfer = std::min(treasury_balance, rounded_allocation_for_period);
-
-        if (amount_to_transfer.amount > 0) {
-            action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
-                make_tuple(treasury_account, recipient, amount_to_transfer, "period budget"s))
-                .send();
-        }
+    if (amount_to_transfer.amount > 0) {
+        action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
+            make_tuple(treasury_account, recipient, amount_to_transfer, "period budget"s))
+            .send();
     }
     globals.set_lastclaimbudgettime(time_point_sec(current_time_point()));
 }
@@ -375,20 +364,20 @@ ACTION daccustodian::runnewperiod(const string &message, const name &dac_id) {
     }
 }
 
-uint16_t daccustodian::get_budget_percentage(const name &dac_id, const dacglobals &globals) {
-    const auto percentage = globals.maybe_get_budget_percentage();
-    if (percentage) {
-        return *percentage;
-    } else {
-        const auto nftcache = dacdir::nftcache_table{DACDIRECTORY_CONTRACT, dac_id.value};
-        const auto index    = nftcache.get_index<"valdesc"_n>();
+// uint16_t daccustodian::get_budget_percentage(const name &dac_id, const dacglobals &globals) {
+//     const auto percentage = globals.maybe_get_budget_percentage();
+//     if (percentage) {
+//         return *percentage;
+//     } else {
+//         const auto nftcache = dacdir::nftcache_table{DACDIRECTORY_CONTRACT, dac_id.value};
+//         const auto index    = nftcache.get_index<"valdesc"_n>();
 
-        const auto index_key = dacdir::nftcache::template_and_value_key_ascending(BUDGET_SCHEMA, 0);
-        const auto itr       = index.lower_bound(index_key);
-        if (itr == index.end() || itr->schema_name != BUDGET_SCHEMA) {
-            return 0; // Return 0 if no budget NFTs are present
-        }
+//         const auto index_key = dacdir::nftcache::template_and_value_key_ascending(BUDGET_SCHEMA, 0);
+//         const auto itr       = index.lower_bound(index_key);
+//         if (itr == index.end() || itr->schema_name != BUDGET_SCHEMA) {
+//             return 0; // Return 0 if no budget NFTs are present
+//         }
 
-        return itr->value;
-    }
-}
+//         return itr->value;
+//     }
+// }

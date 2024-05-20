@@ -293,6 +293,8 @@ namespace eosdac {
     SINGLETON(dacglobals, daccustodian, 
             PROPERTY_OPTIONAL_TYPECASTING(uint16_t, uint32_t, budget_percentage);
             PROPERTY_OPTIONAL_TYPECASTING(uint16_t, uint32_t, prop_budget_percentage);
+            PROPERTY(asset, budget_tlm);
+            PROPERTY(asset, prop_budget_tlm);
             PROPERTY(time_point_sec, lastclaimbudgettime); 
             PROPERTY(int64_t, total_weight_of_votes);
             PROPERTY(bool, met_initial_votes_threshold); 
@@ -372,9 +374,8 @@ namespace eosdac {
         ACTION setlockdelay(const uint32_t &lockup_release_time_delay, const name &dac_id);
         ACTION setpaymax(const eosio::extended_asset &requested_pay_max, const name &dac_id);
         ACTION settokensup(const uint64_t &token_supply_theshold, const name &dac_id);
-        ACTION setbudget(const name &dac_id, const uint16_t percentage);
-        ACTION setprpbudget(const name &dac_id, const uint16_t percentage);
-        ACTION unsetbudget(const name &dac_id);
+        ACTION setbudget(const name &dac_id, const asset new_budget);
+        ACTION setprpbudget(const name &dac_id, const asset new_budget);
 
 #ifdef DEBUG
         ACTION migratestate(const name &dac_id);
