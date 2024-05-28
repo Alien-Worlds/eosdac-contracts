@@ -470,11 +470,22 @@ export class SharedTestObjects {
         this.dacproposals_contract.account.name,
         'active',
         'owner',
-        UpdateAuth.AuthorityToSet.forContractCode(
-          this.dacproposals_contract.account
+        UpdateAuth.AuthorityToSet.explicitAuthorities(
+          1,
+          [
+            {
+              weight: 1,
+              permission: {
+                actor: this.dacproposals_contract.account.name,
+                permission: 'eosio.code',
+              },
+            },
+          ],
+          [{ weight: 1, key: this.dacproposals_contract.account.publicKey }],
+          []
         )
       ),
-      'change active of escrow to dacproposals'
+      'change active of dacproposals'
     );
 
     await UpdateAuth.execUpdateAuth(
