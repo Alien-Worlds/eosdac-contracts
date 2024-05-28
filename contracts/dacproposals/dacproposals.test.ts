@@ -222,8 +222,122 @@ describe('Dacproposals', () => {
       );
     });
   });
+  context('Manage Arb Whitelist', async () => {
+    context('without valid auth', async () => {
+      it('should fail with auth error', async () => {
+        await assertMissingAuthority(
+          shared.dacproposals_contract.addarbwl(arbiter.name, 12, dacId, {
+            from: otherAccount,
+          })
+        );
+      });
+    });
+    context('with valid auth', async () => {
+      context('add arbiter', async () => {
+        it('should succeed', async () => {
+          await shared.dacproposals_contract.addarbwl(arbiter.name, 12, dacId, {
+            from: shared.dacproposals_contract.account,
+          });
+        });
+        it('should add arbiter to whitelist', async () => {
+          await assertRowsEqual(
+            shared.dacproposals_contract.arbwhitelistTable({
+              scope: dacId,
+            }),
+            [{ arbiter: arbiter.name, rating: 12 }]
+          );
+        });
+      });
+      context('update arb white list', async () => {
+        context('with invalid auth', async () => {
+          it('should fail with auth error', async () => {
+            await assertMissingAuthority(
+              shared.dacproposals_contract.updarbwl(arbiter.name, 15, dacId, {
+                from: otherAccount,
+              })
+            );
+          });
+        });
+        context('with valid auth', async () => {
+          it('should succeed', async () => {
+            await shared.dacproposals_contract.updarbwl(
+              arbiter.name,
+              15,
+              dacId,
+              {
+                from: shared.dacproposals_contract.account,
+              }
+            );
+          });
+          it('should update arbiter rating', async () => {
+            await assertRowsEqual(
+              shared.dacproposals_contract.arbwhitelistTable({
+                scope: dacId,
+              }),
+              [{ arbiter: arbiter.name, rating: 15 }]
+            );
+          });
+        });
+      });
+      context('remove arbiter', async () => {
+        context('without valid auth', async () => {
+          it('should fail with auth error', async () => {
+            await assertMissingAuthority(
+              shared.dacproposals_contract.rmvarbwl(arbiter.name, dacId, {
+                from: otherAccount,
+              })
+            );
+          });
+        });
+        context('with valid auth', async () => {
+          it('should succeed', async () => {
+            await shared.dacproposals_contract.rmvarbwl(arbiter.name, dacId, {
+              from: shared.dacproposals_contract.account,
+            });
+          });
+          it('should remove arbiter from whitelist', async () => {
+            await assertRowCount(
+              shared.dacproposals_contract.arbwhitelistTable({
+                scope: dacId,
+              }),
+              0
+            );
+          });
+        });
+      });
+    });
+  });
   context('create proposal', async () => {
+    context('without arb in whitelist permissions', async () => {
+      it('should fail with whitelist arb error', async () => {
+        await assertEOSErrorIncludesMessage(
+          shared.dacproposals_contract.createprop(
+            proposer1Account.name,
+            'title',
+            'summary',
+            arbiter.name,
+            { quantity: '100.0000 EOS', contract: 'eosio.token' },
+            {
+              quantity: '10.0000 PROPDAC',
+              contract: shared.dac_token_contract.name,
+            },
+            proposalHash,
+            newpropid,
+            category,
+            150,
+            dacId,
+            { from: regMembers[0] }
+          ),
+          'ERR::ARBITER_NOT_FOUND'
+        );
+      });
+    });
     context('without valid permissions', async () => {
+      before(async () => {
+        await shared.dacproposals_contract.addarbwl(arbiter.name, 12, dacId, {
+          from: shared.dacproposals_contract.account,
+        });
+      });
       it('should fail with auth error', async () => {
         await assertMissingAuthority(
           shared.dacproposals_contract.createprop(
@@ -340,7 +454,7 @@ describe('Dacproposals', () => {
               dacId,
               { from: proposer1Account }
             ),
-            'CREATEPROP_INVALID_arbiter'
+            'ERR::ARBITER_NOT_FOUND'
           );
         });
       });
@@ -460,7 +574,7 @@ describe('Dacproposals', () => {
               proposer1Account.name,
               'title',
               'summary',
-              'randomname',
+              arbiter.name,
               {
                 quantity: '100.0000 EOS',
                 contract: 'eosio.token',
@@ -490,7 +604,7 @@ describe('Dacproposals', () => {
               quantity: '0.0000 PROPDAC',
             },
             dacId,
-            { from: shared.auth_account }
+            { from: shared.dacproposals_contract.account }
           );
         });
         it('should succeed', async () => {
@@ -1617,7 +1731,7 @@ describe('Dacproposals', () => {
           context('with enough finalize_approve votes to approve', async () => {
             before(async () => {
               await shared.dacproposals_contract.minduration(20, dacId, {
-                from: shared.auth_account,
+                from: shared.dacproposals_contract.account,
               });
 
               for (const custodian of propDacCustodians) {

@@ -135,7 +135,7 @@ namespace eosdac {
         );
 
 
-        struct arbiter_white_list {
+         struct [[eosio::table("arbwl"), eosio::contract("dacproposals")]] arbiter_white_list {
             name arbiter;
             uint64_t rating;
 
