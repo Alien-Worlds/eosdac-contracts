@@ -133,6 +133,16 @@ namespace eosdac {
             PROPERTY(uint32_t, approval_duration); 
             PROPERTY(uint32_t, min_proposal_duration); 
         );
+
+
+        struct arbiter_white_list {
+            name arbiter;
+            uint64_t rating;
+
+            uint64_t primary_key() const { return arbiter.value; }
+        };
+
+        using arbiterwhitelist_table = eosio::multi_index<"arbwhitelist"_n, arbiter_white_list>;
         // clang-format on
 
         dacproposals(name receiver, name code, datastream<const char *> ds) : contract(receiver, code, ds) {}
@@ -163,6 +173,9 @@ namespace eosdac {
         ACTION updpropvotes(name proposal_id, name dac_id);
         ACTION setpropfee(extended_asset new_proposal_fee, name dac_id);
         ACTION refund(name account);
+        ACTION addarbwl(name arbiter, uint64_t rating, name dac_id);
+        ACTION updarbwl(name arbiter, uint64_t rating, name dac_id);
+        ACTION rmvarbwl(name arbiter, name dac_id);
 
         [[eosio::on_notify("*::transfer")]] void receive(name from, name to, asset quantity, string memo);
         ACTION                                   minduration(uint32_t new_min_proposal_duration, name dac_id);

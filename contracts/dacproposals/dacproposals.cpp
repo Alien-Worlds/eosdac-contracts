@@ -15,6 +15,13 @@ namespace eosdac {
     ACTION dacproposals::createprop(name proposer, string title, string summary, name arbiter,
         extended_asset proposal_pay, extended_asset arbiter_pay, string content_hash, name id, uint16_t category,
         uint32_t job_duration, name dac_id) {
+
+        auto arb_white_list = arbiterwhitelist_table(get_self(), dac_id.value);
+        auto arb_itr =
+            arb_white_list.require_find(arbiter.value, "ERR::ARBITER_NOT_FOUND::Arbiter not found in whitelist");
+        // check(arb_itr->rating > SOME_FUTURE_RATING, "ERR::ARBITER_NOT_ACTIVE::Arbiter is not rated enough to be
+        // active.");
+
         require_auth(proposer);
         assertValidMember(proposer, dac_id);
         proposal_table proposals(get_self(), dac_id.value);
@@ -738,4 +745,35 @@ namespace eosdac {
         auto current_configs = configs{get_self(), dac_id};
         current_configs.set_min_proposal_duration(new_min_proposal_duration);
     }
+
+    void dacproposals::addarbwl(name arbiter, uint64_t rating, name dac_id) {
+        require_auth(get_self());
+        auto arbiterwhitelist = arbiterwhitelist_table(get_self(), dac_id.value);
+        auto arbiter_itr      = arbiterwhitelist.find(arbiter.value);
+        check(
+            arbiter_itr == arbiterwhitelist.end(), "ERR::ARBITER_ALREADY_EXISTS::Arbiter already exists in whitelist.");
+        arbiterwhitelist.emplace(get_self(), [&](auto &a) {
+            a.arbiter = arbiter;
+            a.rating  = rating;
+        });
+    }
+
+    void dacproposals::updarbwl(name arbiter, uint64_t rating, name dac_id) {
+        require_auth(get_self());
+        auto arbiterwhitelist = arbiterwhitelist_table(get_self(), dac_id.value);
+        auto arbiter_itr =
+            arbiterwhitelist.require_find(arbiter.value, "ERR::ARBITER_NOT_FOUND::Arbiter not found in whitelist.");
+        arbiterwhitelist.modify(arbiter_itr, same_payer, [&](auto &a) {
+            a.rating = rating;
+        });
+    }
+
+    void dacproposals::rmvarbwl(name arbiter, name dac_id) {
+        require_auth(get_self());
+        auto arbiterwhitelist = arbiterwhitelist_table(get_self(), dac_id.value);
+        auto arbiter_itr =
+            arbiterwhitelist.require_find(arbiter.value, "ERR::ARBITER_NOT_FOUND::Arbiter not found in whitelist.");
+        arbiterwhitelist.erase(arbiter_itr);
+    }
+
 } // namespace eosdac
