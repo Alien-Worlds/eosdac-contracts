@@ -322,3 +322,14 @@ ACTION daccustodian::unsetbudget(const name &dac_id) {
     auto globals = dacglobals{get_self(), dac_id};
     globals.unset_budget_percentage();
 }
+
+ACTION daccustodian::setrequirewl(const name &dac_id, bool required) {
+    require_auth(get_self());
+
+    auto globals = dacglobals{get_self(), dac_id};
+    if (required) {
+        globals.set_requires_whitelist(true);
+    } else {
+        globals.unset_requires_whitelist();
+    }
+}
