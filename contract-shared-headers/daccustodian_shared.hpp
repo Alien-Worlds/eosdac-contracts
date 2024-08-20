@@ -289,6 +289,17 @@ namespace eosdac {
 
     using candperms_table = multi_index<"candperms"_n, candperm>;
 
+    struct [[eosio::table("whitelist"), eosio::contract("daccustodian")]] whitelist {
+        name     cand;
+        uint64_t rating;
+
+        uint64_t primary_key() const {
+            return cand.value;
+        }
+    };
+
+    using whitelist_table = eosio::multi_index<"whitelist"_n, whitelist>;
+
     // clang-format off
     SINGLETON(dacglobals, daccustodian, 
             PROPERTY_OPTIONAL_TYPECASTING(uint16_t, uint32_t, budget_percentage);
@@ -315,6 +326,7 @@ namespace eosdac {
             PROPERTY(eosio::extended_asset, requested_pay_max); 
             PROPERTY(uint64_t, token_supply_theshold);
             PROPERTY(bool, maintenance_mode);
+            PROPERTY_OPTIONAL_TYPECASTING(bool, bool, requires_whitelist);
     )
     // clang-format on
 
@@ -375,6 +387,10 @@ namespace eosdac {
         ACTION setbudget(const name &dac_id, const uint16_t percentage);
         ACTION setprpbudget(const name &dac_id, const uint16_t percentage);
         ACTION unsetbudget(const name &dac_id);
+        ACTION setrequirewl(const name &dac_id, bool required);
+        ACTION addwl(name cand, uint64_t rating, name dac_id);
+        ACTION updwl(name cand, uint64_t rating, name dac_id);
+        ACTION rmvwl(name cand, name dac_id);
 
 #ifdef DEBUG
         ACTION migratestate(const name &dac_id);

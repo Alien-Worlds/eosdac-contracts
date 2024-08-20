@@ -8,6 +8,11 @@ ACTION daccustodian::nominatecane(const name &cand, const asset &requestedpay, c
     assertValidMember(cand, dac_id);
     auto globals = dacglobals{get_self(), dac_id};
 
+    if (globals.maybe_get_requires_whitelist()) {
+        whitelist_table whitelist(get_self(), dac_id.value);
+        check(whitelist.find(cand.value) != whitelist.end(), "ERR::NOT_IN_WHITELIST::Candidate is not in whitelist.");
+    }
+
     check(requestedpay.amount >= 0, "ERR::UPDATEREQPAY_UNDER_ZERO::Requested pay amount must not be negative.");
     // This implicitly asserts that the symbol of requestedpay matches the globals.max pay.
     check(requestedpay <= globals.get_requested_pay_max().quantity,
@@ -169,7 +174,7 @@ void daccustodian::removeCustodian(name cust, name dac_id) {
 
     custodians_table custodians(_self, dac_id.value);
     auto             elected = custodians.require_find(cust.value,
-        "ERR::REMOVECUSTODIAN_NOT_CURRENT_CUSTODIAN::The entered account name is not for a current custodian.");
+                    "ERR::REMOVECUSTODIAN_NOT_CURRENT_CUSTODIAN::The entered account name is not for a current custodian.");
     custodians.erase(elected);
 
     pending_custodians_table pending_custs(get_self(), dac_id.value);
@@ -270,3 +275,30 @@ ACTION daccustodian::stprofile(const name &cand, const std::string &profile, con
     assertValidMember(cand, dac_id);
     check(profile.size() < 16256, "profile exceeds max size.");
 };
+
+ACTION daccustodian::addwl(name cand, uint64_t rating, name dac_id) {
+    require_auth(get_self());
+    auto whitelist = whitelist_table(get_self(), dac_id.value);
+    auto itrr      = whitelist.find(cand.value);
+    check(itrr == whitelist.end(), "ERR::CAND_WL_ALREADY_EXISTS::Cand already exists in whitelist.");
+    whitelist.emplace(get_self(), [&](auto &a) {
+        a.cand   = cand;
+        a.rating = rating;
+    });
+}
+
+ACTION daccustodian::updwl(name cand, uint64_t rating, name dac_id) {
+    require_auth(get_self());
+    auto whitelist = whitelist_table(get_self(), dac_id.value);
+    auto itrr      = whitelist.require_find(cand.value, "ERR::CAND_WL_NOT_FOUND_UPD::Cand not found in whitelist.");
+    whitelist.modify(itrr, same_payer, [&](auto &a) {
+        a.rating = rating;
+    });
+}
+
+ACTION daccustodian::rmvwl(name cand, name dac_id) {
+    require_auth(get_self());
+    auto whitelist = whitelist_table(get_self(), dac_id.value);
+    auto itrr      = whitelist.require_find(cand.value, "ERR::CAND_WL_NOT_FOUND_RMV::Cand not found in whitelist.");
+    whitelist.erase(itrr);
+}
