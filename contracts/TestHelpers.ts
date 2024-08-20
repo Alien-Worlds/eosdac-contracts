@@ -94,45 +94,58 @@ export class SharedTestObjects {
       'dacdirectory',
       'index.worlds'
     );
+    console.log('deployed index.worlds');
 
     this.daccustodian_contract = await debugPromise(
       ContractDeployer.deployWithName('daccustodian', 'daccustodian'),
       'created daccustodian'
     );
+    console.log('deployed daccustodian');
 
     this.dac_token_contract = await debugPromise(
       ContractDeployer.deployWithName('eosdactokens', 'token.worlds'),
       'created eosdactokens'
     );
+    console.log('deployed token.worlds');
+
     this.dacproposals_contract = await debugPromise(
       ContractDeployer.deployWithName('dacproposals', 'dacproposals'),
       'created dacproposals'
     );
+    console.log('deployed dacproposals');
+
     await this.dacproposals_contract.account.addCodePermission();
 
     this.dacescrow_contract = await debugPromise(
       ContractDeployer.deployWithName('dacescrow', 'dacescrow'),
       'created dacescrow'
     );
+    console.log('deployed dacescrow');
+
     this.msigworlds_contract = await debugPromise(
       ContractDeployer.deployWithName<Msigworlds>('msigworlds', 'msig.worlds'),
       'created msigworlds_contract'
     );
+    console.log('deplyed msig.worlds');
 
     this.referendum_contract = await debugPromise(
       ContractDeployer.deployWithName<Referendum>('referendum', 'referendum'),
       'created referendum_contract'
     );
+    console.log('deplyed referendum');
 
     this.stakevote_contract = await debugPromise(
       ContractDeployer.deployWithName<Stakevote>('stakevote', 'stakevote'),
       'created stakevote_contract'
     );
+    console.log('deplyed stakevote');
 
     this.atomicassets = await ContractDeployer.deployWithName<Atomicassets>(
       'atomicassets',
       'atomicassets'
     );
+    console.log('deployed atomicassets');
+
     await this.atomicassets.account.addCodePermission();
     await this.atomicassets.init({ from: this.atomicassets.account });
 
