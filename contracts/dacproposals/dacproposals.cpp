@@ -15,6 +15,9 @@ namespace eosdac {
     ACTION dacproposals::createprop(name proposer, string title, string summary, name arbiter,
         extended_asset proposal_pay, extended_asset arbiter_pay, string content_hash, name id, uint16_t category,
         uint32_t job_duration, name dac_id) {
+        auto rec_whitelist = rec_whitelist_table(get_self(), dac_id.value);
+        auto itrr          = rec_whitelist.require_find(
+            proposer.value, "ERR::PROPR_WL_NOT_FOUND::Proposer not found in the receiver whitelist.");
 
         auto arb_white_list = arbiterwhitelist_table(get_self(), dac_id.value);
         auto arb_itr =
@@ -511,6 +514,35 @@ namespace eosdac {
                 p.state = name{newPropState};
             });
         }
+    }
+
+    ACTION dacproposals::addrecwl(name receiver, uint64_t rating, name dac_id) {
+        require_auth(get_self());
+        auto rec_whitelist = rec_whitelist_table(get_self(), dac_id.value);
+        auto itrr          = rec_whitelist.find(receiver.value);
+        check(itrr == rec_whitelist.end(), "ERR::REC_WL_ALREADY_EXISTS::Receiver already exists in whitelist.");
+        rec_whitelist.emplace(get_self(), [&](auto &a) {
+            a.receiver = receiver;
+            a.rating   = rating;
+        });
+    }
+
+    ACTION dacproposals::updrecwl(name receiver, uint64_t rating, name dac_id) {
+        require_auth(get_self());
+        auto rec_whitelist = rec_whitelist_table(get_self(), dac_id.value);
+        auto itrr =
+            rec_whitelist.require_find(receiver.value, "ERR::REC_WL_NOT_FOUND_UPD::Receiver not found in whitelist.");
+        rec_whitelist.modify(itrr, same_payer, [&](auto &a) {
+            a.rating = rating;
+        });
+    }
+
+    ACTION dacproposals::rmvrecwl(name receiver, name dac_id) {
+        require_auth(get_self());
+        auto rec_whitelist = rec_whitelist_table(get_self(), dac_id.value);
+        auto itrr =
+            rec_whitelist.require_find(receiver.value, "ERR::REC_WL_NOT_FOUND_RMV::Receiver not found in whitelist.");
+        rec_whitelist.erase(itrr);
     }
 
     void dacproposals::transferfunds(const proposal &prop, name dac_id) {
