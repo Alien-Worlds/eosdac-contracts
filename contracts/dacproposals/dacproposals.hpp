@@ -145,7 +145,7 @@ namespace eosdac {
         using arbiterwhitelist_table = eosio::multi_index<"arbwhitelist"_n, arbiter_white_list>;
         // clang-format on
 
-        struct [[eosio::table("recwl"), eosio::contract("daccustodian")]] receiver_whitelist {
+        struct [[eosio::table("recwl"), eosio::contract("dacproposals")]] receiver_whitelist {
             name     receiver;
             uint64_t rating;
 

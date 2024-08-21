@@ -758,6 +758,186 @@ describe('Daccustodian', () => {
     });
   });
 
+  context('verified dac registering', async () => {
+    context('With a staking enabled DAC', async () => {
+      const dacId = 'veristakedac';
+      let newUser1: Account;
+
+      before(async () => {
+        await shared.initDac(dacId, '2,VERI', '1000000.00 VERI');
+        await shared.updateconfig(dacId, '12.00 VERI');
+        await shared.daccustodian_contract.setrequirewl(dacId, true);
+        await shared.dac_token_contract.stakeconfig(
+          { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+          '2,VERI',
+          { from: shared.auth_account }
+        );
+        newUser1 = await debugPromise(
+          AccountManager.createAccount(),
+          'create account for capture stake'
+        );
+      });
+
+      context('with unregistered member', async () => {
+        it('should fail with error', async () => {
+          await assertEOSErrorIncludesMessage(
+            shared.daccustodian_contract.nominatecane(
+              newUser1.name,
+              '25.0000 EOS',
+              dacId,
+              { from: newUser1 }
+            ),
+            'ERR::GENERAL_REG_MEMBER_NOT_FOUND'
+          );
+        });
+      });
+      context('with registered member', async () => {
+        before(async () => {
+          await shared.dac_token_contract.memberreg(
+            newUser1.name,
+            shared.configured_dac_memberterms,
+            dacId,
+            { from: newUser1 }
+          );
+        });
+        context('with unverified member', async () => {
+          it('should fail with error', async () => {
+            await assertEOSErrorIncludesMessage(
+              shared.daccustodian_contract.nominatecane(
+                newUser1.name,
+                '25.0000 EOS',
+                dacId,
+                { from: newUser1 }
+              ),
+              'ERR::NOT_IN_WHITELIST'
+            );
+          });
+        });
+        context('Adding to whitelist', async () => {
+          context('without valid auth', async () => {
+            it('should fail', async () => {
+              await assertMissingAuthority(
+                shared.daccustodian_contract.addwl(newUser1.name, 1, dacId, {
+                  from: newUser1,
+                })
+              );
+            });
+          });
+          context('with valid auth ', async () => {
+            it('should succeed', async () => {
+              await shared.daccustodian_contract.addwl(
+                newUser1.name,
+                1,
+                dacId,
+                {
+                  from: shared.daccustodian_contract.account,
+                }
+              );
+            });
+          });
+          context('with duplicate user added', async () => {
+            it('should fail', async () => {
+              await sleep(1000);
+              await assertEOSErrorIncludesMessage(
+                shared.daccustodian_contract.addwl(newUser1.name, 1, dacId, {
+                  from: shared.daccustodian_contract.account,
+                }),
+                'ERR::CAND_WL_ALREADY_EXISTS'
+              );
+            });
+          });
+        });
+        context('in whitelist', async () => {
+          context('with sufficient staked funds', async () => {
+            before(async () => {
+              await debugPromise(
+                shared.dac_token_contract.transfer(
+                  shared.tokenIssuer,
+                  newUser1.name,
+                  '12.00 VERI',
+                  '',
+                  { from: shared.tokenIssuer }
+                ),
+                'failed to preload the user with enough tokens for staking x'
+              );
+              await debugPromise(
+                shared.dac_token_contract.stake(newUser1.name, '12.00 VERI', {
+                  from: newUser1,
+                }),
+                'failed staking'
+              );
+            });
+            it('should succeed', async () => {
+              const result = await shared.daccustodian_contract.dacglobalsTable(
+                {
+                  scope: dacId,
+                }
+              );
+              await shared.daccustodian_contract.nominatecane(
+                newUser1.name,
+                '25.0000 EOS',
+                dacId,
+                { from: newUser1 }
+              );
+            });
+          });
+        });
+      });
+    });
+    context('With a staking disabled DAC', async () => {
+      const dacId = 'vernostadac';
+      let newUser1: Account;
+
+      before(async () => {
+        await shared.initDac(dacId, '0,VERINS', '1000000 VERINS');
+        await shared.updateconfig(dacId, '0 VERINS');
+        await shared.daccustodian_contract.setrequirewl(dacId, true);
+        newUser1 = await debugPromise(
+          AccountManager.createAccount(),
+          'create account for capture stake'
+        );
+      });
+
+      context('with registered and verifed member', async () => {
+        before(async () => {
+          await shared.dac_token_contract.memberreg(
+            newUser1.name,
+            shared.configured_dac_memberterms,
+            dacId,
+            { from: newUser1 }
+          );
+          await shared.daccustodian_contract.addwl(newUser1.name, 1, dacId, {
+            from: shared.daccustodian_contract.account,
+          });
+        });
+        it('should succeed', async () => {
+          await shared.daccustodian_contract.nominatecane(
+            newUser1.name,
+            '25.0000 EOS',
+            dacId,
+            { from: newUser1 }
+          );
+        });
+        it('should fail to unstake', async () => {
+          await assertEOSErrorIncludesMessage(
+            shared.dac_token_contract.unstake(newUser1.name, '1 VERINS', {
+              from: newUser1,
+            }),
+            'ERR::STAKING_NOT_ENABLED'
+          );
+        });
+        it('should fail to unstake zero amount', async () => {
+          await assertEOSErrorIncludesMessage(
+            shared.dac_token_contract.unstake(newUser1.name, '0 VERINS', {
+              from: newUser1,
+            }),
+            'ERR::STAKING_NOT_ENABLED'
+          );
+        });
+      });
+    });
+  });
+
   context('avg_vote_time_stamp', async () => {
     let regMembers: Account[];
     let dacId = 'avgdac';
