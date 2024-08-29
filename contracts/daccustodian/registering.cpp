@@ -8,7 +8,7 @@ ACTION daccustodian::nominatecane(const name &cand, const asset &requestedpay, c
     assertValidMember(cand, dac_id);
     auto globals = dacglobals{get_self(), dac_id};
 
-    if (globals.maybe_get_requires_whitelist()) {
+    if (globals.maybe_get_requires_whitelist().has_value() && globals.maybe_get_requires_whitelist().value() == true) {
         whitelist_table whitelist(get_self(), dac_id.value);
         check(whitelist.find(cand.value) != whitelist.end(), "ERR::NOT_IN_WHITELIST::Candidate is not in whitelist.");
     }
