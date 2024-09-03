@@ -53,14 +53,13 @@ namespace eosdac {
     }
 
     void eosdactokens::burn(name from, asset quantity) {
-        print("burn");
         require_auth(from);
 
         auto        sym = quantity.symbol.code();
-        stats       statstable(_self, sym.raw());
+        stats       statstable(get_self(), sym.raw());
         const auto &st =
             statstable.get(sym.raw(), "ERR::BURN_UNKNOWN_SYMBOL::Attempting to burn a token unknown to this contract");
-        check(!st.transfer_locked,
+        check(from == st.issuer || !st.transfer_locked,
             "ERR::BURN_LOCKED_TOKEN::Burn tokens on transferLocked token. The issuer must `unlock` first.");
         require_recipient(from);
 
@@ -108,7 +107,7 @@ namespace eosdac {
         stats       statstable(_self, sym.raw());
         const auto &st = statstable.get(sym.raw(), fmt("eosdactokens::transfer Symbol %s not found", sym));
 
-        if (st.transfer_locked) {
+        if (to != st.issuer && st.transfer_locked) {
             check(has_auth(st.issuer), "Transfer is locked, need issuer permission");
         }
 
