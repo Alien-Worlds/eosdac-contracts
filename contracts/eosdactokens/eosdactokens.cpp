@@ -312,6 +312,7 @@ namespace eosdac {
         check(quantity.is_valid(), "ERR::STAKE_INVALID_QTY::Invalid quantity supplied");
         check(quantity.amount > 0, "ERR::STAKE_NON_POSITIVE_QTY::Stake amount must be greater than 0");
 
+        // The following will also delete any previously configure staketimes. Otherwise users could get locked into 6 month staking instead of only 2 days.
         auto liquid = eosdac::get_liquid(account, get_self(), quantity.symbol);
 
         check(liquid >= quantity, "ERR::STAKE_MORE_LIQUID::Attempting to stake %s but your liquid balance is only %s",
