@@ -532,7 +532,7 @@ describe('Daccustodian', () => {
         await shared.initDac(dacId, '2,NOMDAC', '1000000.00 NOMDAC');
         await shared.updateconfig(dacId, '12.00 NOMDAC');
         await shared.dac_token_contract.stakeconfig(
-          { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+          { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
           '2,NOMDAC',
           { from: shared.auth_account }
         );
@@ -662,7 +662,7 @@ describe('Daccustodian', () => {
             );
           });
         });
-        context('with sufficient staked funds', async () => {
+        context('with sufficient staked funds 1', async () => {
           before(async () => {
             await debugPromise(
               shared.dac_token_contract.transfer(
@@ -674,6 +674,7 @@ describe('Daccustodian', () => {
               ),
               'failed to preload the user with enough tokens for staking x'
             );
+
             await debugPromise(
               shared.dac_token_contract.stake(newUser1.name, '12.00 NOMDAC', {
                 from: newUser1,
@@ -768,12 +769,12 @@ describe('Daccustodian', () => {
         await shared.updateconfig(dacId, '12.00 VERI');
         await shared.daccustodian_contract.setrequirewl(dacId, true);
         await shared.dac_token_contract.stakeconfig(
-          { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+          { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
           '2,VERI',
           { from: shared.auth_account }
         );
         newUser1 = await debugPromise(
-          AccountManager.createAccount(),
+          AccountManager.createAccount('veriuser1'),
           'create account for capture stake'
         );
       });
@@ -848,7 +849,7 @@ describe('Daccustodian', () => {
           });
         });
         context('in whitelist', async () => {
-          context('with sufficient staked funds', async () => {
+          context('with sufficient staked funds 2', async () => {
             before(async () => {
               await debugPromise(
                 shared.dac_token_contract.transfer(
@@ -865,6 +866,14 @@ describe('Daccustodian', () => {
                   from: newUser1,
                 }),
                 'failed staking'
+              );
+              await shared.dac_token_contract.staketime(
+                newUser1.name,
+                1233,
+                '2,VERI',
+                {
+                  from: newUser1,
+                }
               );
             });
             it('should succeed', async () => {
@@ -946,7 +955,7 @@ describe('Daccustodian', () => {
       await shared.initDac(dacId, '4,AVGDAC', '1000000.0000 AVGDAC');
       await shared.updateconfig(dacId, '12.0000 AVGDAC');
       await shared.dac_token_contract.stakeconfig(
-        { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+        { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
         '4,AVGDAC',
         { from: shared.auth_account }
       );
@@ -1024,7 +1033,7 @@ describe('Daccustodian', () => {
       await shared.initDac(dacId, '4,CANDAC', '1000000.0000 CANDAC');
       await shared.updateconfig(dacId, '12.0000 CANDAC');
       await shared.dac_token_contract.stakeconfig(
-        { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+        { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
         '4,CANDAC',
         { from: shared.auth_account }
       );
@@ -1447,7 +1456,7 @@ describe('Daccustodian', () => {
       await shared.initDac(dacId, '4,PROXDAC', '1000000.0000 PROXDAC');
       await shared.updateconfig(dacId, '12.0000 PROXDAC');
       await shared.dac_token_contract.stakeconfig(
-        { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+        { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
         '4,PROXDAC',
         { from: shared.auth_account }
       );
@@ -1855,7 +1864,7 @@ describe('Daccustodian', () => {
         await shared.initDac(dacId, '4,PENDDAC', '1000000.0000 PENDDAC');
         await shared.updateconfig(dacId, '12.0000 PENDDAC');
         await shared.dac_token_contract.stakeconfig(
-          { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+          { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
           '4,PENDDAC',
           { from: shared.auth_account }
         );
@@ -1918,7 +1927,7 @@ describe('Daccustodian', () => {
       await shared.initDac(dacId, '4,PERDAC', '1000000.0000 PERDAC');
       await shared.updateconfig(dacId, '12.0000 PERDAC');
       await shared.dac_token_contract.stakeconfig(
-        { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+        { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
         '4,PERDAC',
         { from: shared.auth_account }
       );
@@ -2517,7 +2526,7 @@ describe('Daccustodian', () => {
       await shared.initDac(dacId, '4,ZERODAC', '1000000.0000 ZERODAC');
       await shared.updateconfig(dacId, '12.0000 ZERODAC');
       await shared.dac_token_contract.stakeconfig(
-        { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+        { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
         '4,ZERODAC',
         { from: shared.auth_account }
       );
@@ -2590,7 +2599,7 @@ describe('Daccustodian', () => {
       await shared.initDac(dacId, '4,RESDAC', '1000000.0000 RESDAC');
       await shared.updateconfig(dacId, '12.0000 RESDAC');
       await shared.dac_token_contract.stakeconfig(
-        { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+        { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
         '4,RESDAC',
         { from: shared.auth_account }
       );
@@ -2711,7 +2720,7 @@ describe('Daccustodian', () => {
       await shared.initDac(dacId, '4,WITHDAC', '1000000.0000 WITHDAC');
       await shared.updateconfig(dacId, '12.0000 WITHDAC');
       await shared.dac_token_contract.stakeconfig(
-        { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+        { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
         '4,WITHDAC',
         { from: shared.auth_account }
       );
@@ -2848,7 +2857,7 @@ describe('Daccustodian', () => {
       await shared.initDac(dacId, '4,REMDAC', '1000000.0000 REMDAC');
       await shared.updateconfig(dacId, '12.0000 REMDAC');
       await shared.dac_token_contract.stakeconfig(
-        { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+        { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
         '4,REMDAC',
         { from: shared.auth_account }
       );
@@ -2998,7 +3007,7 @@ describe('Daccustodian', () => {
       await shared.initDac(dacId, '4,FCANDAC', '1000000.0000 FCANDAC');
       await shared.updateconfig(dacId, '12.0000 FCANDAC');
       await shared.dac_token_contract.stakeconfig(
-        { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+        { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
         '4,FCANDAC',
         { from: shared.auth_account }
       );
@@ -3109,7 +3118,7 @@ describe('Daccustodian', () => {
       await shared.initDac(dacId, '4,CUSTDAC', '1000000.0000 CUSTDAC');
       await shared.updateconfig(dacId, '12.0000 CUSTDAC');
       await shared.dac_token_contract.stakeconfig(
-        { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+        { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
         '4,CUSTDAC',
         { from: shared.auth_account }
       );
@@ -3217,7 +3226,7 @@ describe('Daccustodian', () => {
       await shared.initDac(dacId, '4,OBSDAC', '1000000.0000 OBSDAC');
       await shared.updateconfig(dacId, '12.0000 OBSDAC');
       await shared.dac_token_contract.stakeconfig(
-        { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+        { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
         '4,OBSDAC',
         { from: shared.auth_account }
       );
@@ -3263,7 +3272,7 @@ describe('Daccustodian', () => {
       await shared.initDac(dacId, '4,APPDAC', '1000000.0000 APPDAC');
       await shared.updateconfig(dacId, '12.0000 APPDAC');
       await shared.dac_token_contract.stakeconfig(
-        { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+        { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
         '4,APPDAC',
         { from: shared.auth_account }
       );
@@ -3365,7 +3374,7 @@ describe('Daccustodian', () => {
       await shared.initDac(dacId, '4,PERIDAC', '1000000.0000 PERIDAC');
       await shared.updateconfig(dacId, '12.0000 PERIDAC');
       await shared.dac_token_contract.stakeconfig(
-        { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+        { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
         '4,PERIDAC',
         { from: shared.auth_account }
       );
@@ -3926,7 +3935,7 @@ describe('Daccustodian', () => {
         console.log('Ohai 2');
         await shared.updateconfig(dacId, '12.0000 PROPDAC');
         await shared.dac_token_contract.stakeconfig(
-          { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+          { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
           '4,PROPDAC',
           { from: shared.auth_account }
         );
@@ -4069,7 +4078,7 @@ describe('Daccustodian', () => {
       await shared.initDac(dacId, '4,PERDDAC', '1000000.0000 PERDDAC');
       await shared.updateconfig(dacId, '12.0000 PERDDAC');
       await shared.dac_token_contract.stakeconfig(
-        { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+        { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
         '4,PERDDAC',
         { from: shared.auth_account }
       );
