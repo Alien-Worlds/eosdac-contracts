@@ -163,7 +163,7 @@ void daccustodian::validateMinStake(name account, name dac_id) {
             "ERR::VALIDATEMINSTAKE_NOT_ENOUGH::Not staked enough. You staked %s, but need to stake at least %s", staked,
             required_stake.quantity);
 
-        const auto delay     = staketime_info::get_delay(get_self(), dac_id, account);
+        const auto delay     = staketime_info::get_delay("token.worlds"_n, dac_id, account);
         const auto min_delay = globals.get_lockup_release_time_delay();
         check(delay >= min_delay, "ERR::VALIDATEMINSTAKE_NOT_LONG_ENOUGH::Staketime must be at least %s but is %s",
             min_delay, delay);
