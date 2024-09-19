@@ -30,6 +30,7 @@ namespace eosdac {
     static constexpr eosio::name STATE_HAS_ENOUGH_FIN_VOTES{"apprfinvtes"};
     static constexpr eosio::name STATE_EXPIRED{"expired"};
     static constexpr eosio::name STATE_DISPUTED{"indispute"};
+    static constexpr eosio::name STATE_COMPLETED{"completed"};
 
     CONTRACT dacproposals : public contract {
         enum VoteTypePublic : uint64_t {
@@ -57,7 +58,8 @@ namespace eosdac {
             ProposalStateHas_enough_approvals_votes = STATE_HAS_ENOUGH_APP_VOTES.value,
             ProposalStateHas_enough_finalize_votes  = STATE_HAS_ENOUGH_FIN_VOTES.value,
             ProposalStateExpired                    = STATE_EXPIRED.value,
-            ProposalStateInDispute                  = STATE_DISPUTED.value
+            ProposalStateInDispute                  = STATE_DISPUTED.value,
+            ProposalStateCompleted                  = STATE_COMPLETED.value
         };
 
       public:
@@ -181,6 +183,7 @@ namespace eosdac {
         ACTION updateconfig(config new_config, name dac_id);
         // ACTION clearconfig(name dac_id);
         ACTION clearexpprop(name proposal_id, name dac_id);
+        ACTION rmvcompelted(name proposal_id, name dac_id);
         ACTION updpropvotes(name proposal_id, name dac_id);
         ACTION setpropfee(extended_asset new_proposal_fee, name dac_id);
         ACTION refund(name account);

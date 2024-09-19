@@ -477,6 +477,14 @@ namespace eosdac {
         clearprop(prop, dac_id);
     }
 
+    ACTION dacproposals::rmvcompelted(name proposal_id, name dac_id) {
+        proposal_table proposals(_self, dac_id.value);
+        const proposal prop = proposals.get(proposal_id.value, "ERR::PROPOSAL_NOT_FOUND::Proposal not found.");
+        check(prop.state == STATE_COMPLETED, "ERR::PROPOSAL_NOT_COMPLETED::Proposal not completed.");
+
+        clearprop(prop, dac_id);
+    }
+
     ACTION dacproposals::updpropvotes(name proposal_id, name dac_id) {
         proposal_table proposals(_self, dac_id.value);
 
@@ -554,7 +562,9 @@ namespace eosdac {
             make_tuple(prop.proposal_id.value, funding_source, dac_id))
             .send();
 
-        clearprop(prop, dac_id);
+        proposals.modify(prop, prop.proposer, [&](proposal &p) {
+            p.state = STATE_COMPLETED;
+        });
     }
 
     void dacproposals::clearprop(const proposal &proposal, name dac_id) {
@@ -718,7 +728,9 @@ namespace eosdac {
         check(prop.state == STATE_DISPUTED,
             "ERR::PROP_NOT_IN_DISPUTE_STATE::A proposal can only be denied by an arbiter when in dispute state.");
 
-        clearprop(prop, dac_id);
+        proposals.modify(prop, prop.proposer, [&](proposal &p) {
+            p.state = STATE_COMPLETED;
+        });
     }
 
     void dacproposals::receive(name from, name to, asset quantity, string memo) {
