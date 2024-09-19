@@ -187,6 +187,8 @@ namespace eosdac {
         ACTION addarbwl(name arbiter, uint64_t rating, name dac_id);
         ACTION updarbwl(name arbiter, uint64_t rating, name dac_id);
         ACTION rmvarbwl(name arbiter, name dac_id);
+        // Same as rmvarbwl but verifies that the arbiter is not an arbiter on a live proposal
+        ACTION safermvarbwl(name arbiter, name dac_id);
 
         ACTION addrecwl(name cand, uint64_t rating, name dac_id);
         ACTION updrecwl(name cand, uint64_t rating, name dac_id);

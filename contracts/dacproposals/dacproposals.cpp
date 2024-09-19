@@ -784,6 +784,11 @@ namespace eosdac {
         auto arbiter_itr      = arbiterwhitelist.find(arbiter.value);
         check(
             arbiter_itr == arbiterwhitelist.end(), "ERR::ARBITER_ALREADY_EXISTS::Arbiter already exists in whitelist.");
+
+        eosio::action(
+            eosio::permission_level{"dao.worlds"_n, "wlman"_n}, "dao.worlds"_n, "rmvwl"_n, make_tuple(arbiter, dac_id))
+            .send();
+
         arbiterwhitelist.emplace(get_self(), [&](auto &a) {
             a.arbiter = arbiter;
             a.rating  = rating;
@@ -806,6 +811,25 @@ namespace eosdac {
         auto arbiter_itr =
             arbiterwhitelist.require_find(arbiter.value, "ERR::ARBITER_NOT_FOUND::Arbiter not found in whitelist.");
         arbiterwhitelist.erase(arbiter_itr);
+    }
+
+    void dacproposals::safermvarbwl(name arbiter, name dac_id) {
+        require_auth(get_self());
+        auto props_table    = proposal_table(get_self(), dac_id.value);
+        auto prop_arb_index = props_table.get_index<"arbiter"_n>();
+        auto prop_itr       = prop_arb_index.find(arbiter.value);
+
+        while (prop_itr != prop_arb_index.end() && prop_itr->arbiter == arbiter) {
+            check(prop_itr->state.value == ProposalStateExpired || prop_itr->state.value == ProposalStateCompleted,
+                "ERR::ARBITER_IN_USE::Arbiter is still in use by a proposal.");
+            prop_itr++;
+        }
+
+        auto arbiterwhitelist = arbiterwhitelist_table(get_self(), dac_id.value);
+        auto arbiter_itr      = arbiterwhitelist.find(arbiter.value);
+        if (arbiter_itr != arbiterwhitelist.end()) {
+            arbiterwhitelist.erase(arbiter_itr);
+        }
     }
 
 } // namespace eosdac
