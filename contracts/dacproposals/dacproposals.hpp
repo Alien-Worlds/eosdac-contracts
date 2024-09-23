@@ -183,7 +183,7 @@ namespace eosdac {
         ACTION updateconfig(config new_config, name dac_id);
         // ACTION clearconfig(name dac_id);
         ACTION clearexpprop(name proposal_id, name dac_id);
-        ACTION rmvcompelted(name proposal_id, name dac_id);
+        ACTION rmvcompleted(name proposal_id, name dac_id);
         ACTION updpropvotes(name proposal_id, name dac_id);
         ACTION setpropfee(extended_asset new_proposal_fee, name dac_id);
         ACTION refund(name account);

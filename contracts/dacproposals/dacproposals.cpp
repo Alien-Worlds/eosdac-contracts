@@ -477,7 +477,7 @@ namespace eosdac {
         clearprop(prop, dac_id);
     }
 
-    ACTION dacproposals::rmvcompelted(name proposal_id, name dac_id) {
+    ACTION dacproposals::rmvcompleted(name proposal_id, name dac_id) {
         proposal_table proposals(_self, dac_id.value);
         const proposal prop = proposals.get(proposal_id.value, "ERR::PROPOSAL_NOT_FOUND::Proposal not found.");
         check(prop.state == STATE_COMPLETED, "ERR::PROPOSAL_NOT_COMPLETED::Proposal not completed.");
@@ -555,14 +555,17 @@ namespace eosdac {
 
     void dacproposals::transferfunds(const proposal &prop, name dac_id) {
         proposal_table proposals(_self, dac_id.value);
-        auto           funding_source = dacdir::dac_for_id(dac_id).account_for_type(dacdir::SPENDINGS);
-        auto           escrow         = dacdir::dac_for_id(dac_id).account_for_type(dacdir::ESCROW);
+        auto           proposal_itr = proposals.find(prop.proposal_id.value);
+        check(proposal_itr != proposals.end(), "ERR::PROPOSAL_NOT_FOUND::Proposal not found");
+
+        auto funding_source = dacdir::dac_for_id(dac_id).account_for_type(dacdir::SPENDINGS);
+        auto escrow         = dacdir::dac_for_id(dac_id).account_for_type(dacdir::ESCROW);
 
         eosio::action(eosio::permission_level{funding_source, "active"_n}, escrow, "approve"_n,
             make_tuple(prop.proposal_id.value, funding_source, dac_id))
             .send();
 
-        proposals.modify(prop, prop.proposer, [&](proposal &p) {
+        proposals.modify(proposal_itr, prop.proposer, [&](proposal &p) {
             p.state = STATE_COMPLETED;
         });
     }
