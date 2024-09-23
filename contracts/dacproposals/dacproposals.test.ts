@@ -60,6 +60,7 @@ describe('Dacproposals', () => {
 
     planet = await AccountManager.createAccount('propplanet');
 
+    await setup_permissions();
     await setup_planet();
 
     await shared.initDac(dacId, '4,PROPDAC', '1000000.0000 PROPDAC', {
@@ -68,7 +69,7 @@ describe('Dacproposals', () => {
     await shared.updateconfig(dacId, '12.0000 PROPDAC');
     eosiotoken = await ContractLoader.at('eosio.token');
     await shared.dac_token_contract.stakeconfig(
-      { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+      { enabled: true, min_stake_time: 1233, max_stake_time: 20 },
       '4,PROPDAC',
       { from: shared.auth_account }
     );
@@ -3377,4 +3378,16 @@ async function setup_planet() {
     'voteprop',
     'one'
   );
+}
+
+async function setup_permissions() {
+  console.log('Ohai setup_permissions');
+  await SharedTestObjects.add_custom_permission_and_link(
+    shared.daccustodian_contract.account,
+    'wlman',
+    shared.daccustodian_contract.account,
+    'rmvwl',
+    shared.dacproposals_contract.account
+  );
+  console.log('DONE.');
 }
