@@ -151,10 +151,6 @@ describe('Dacproposals', () => {
         );
       });
       it('should have correct config in config table', async () => {
-        const xxx = await shared.dacproposals_contract.configsTable({
-          scope: dacId,
-        });
-        console.log(JSON.stringify(xxx, null, 2));
         await assertRowsEqual(
           shared.dacproposals_contract.configsTable({ scope: dacId }),
           [
@@ -1768,7 +1764,6 @@ describe('Dacproposals', () => {
       });
     });
   });
-
   context('finalize', async () => {
     context('without valid auth', async () => {
       // Any auth is allowed
@@ -1933,32 +1928,32 @@ describe('Dacproposals', () => {
                 [{ balance: '20010.0000 PROPDAC' }]
               );
             });
-            it('dacescrow should have returned the arbiter funds', async () => {
+            it('dacescrow should not return the arbiter funds', async () => {
               await assertRowsEqual(
                 shared.dac_token_contract.accountsTable({
                   scope: arbiter.name,
                 }),
-                [{ balance: '20000.0000 PROPDAC' }]
+                [{ balance: '20010.0000 PROPDAC' }]
               );
             });
-            it('dacescrow arbiter funds should be returned to planet', async () => {
+            it('dacescrow arbiter funds should not be returned to planet', async () => {
               await assertRowsEqual(
                 shared.dac_token_contract.accountsTable({
                   scope: planet.name,
                 }),
-                [{ balance: '100000.0000 PROPDAC' }]
+                [{ balance: '99990.0000 PROPDAC' }]
               );
             });
           });
           context('Read the proposals table after finalize', async () => {
-            it('should have removed the finalized proposal', async () => {
+            it('should not remove the finalized proposal', async () => {
               await assertRowCount(
                 shared.dacproposals_contract.proposalsTable({
                   scope: dacId,
                   lowerBound: newpropid,
                   upperBound: newpropid,
                 }),
-                0
+                1
               );
             });
             it('escrow table should contain 0 row after finalize is done', async () => {
@@ -1976,6 +1971,14 @@ describe('Dacproposals', () => {
   context('arbapprove', async () => {
     const arbApproveId = 'arbapproveid';
     context('with invalid prop', async () => {
+      it('establish planet balance 0', async () => {
+        await assertRowsEqual(
+          shared.dac_token_contract.accountsTable({
+            scope: planet.name,
+          }),
+          [{ balance: '99990.0000 PROPDAC' }]
+        );
+      });
       it('should fail with proposal not found error', async () => {
         await assertEOSErrorIncludesMessage(
           shared.dacproposals_contract.arbapprove(
@@ -2063,7 +2066,12 @@ describe('Dacproposals', () => {
           dacId,
           { from: arbiter }
         );
-
+        await assertRowsEqual(
+          shared.dac_token_contract.accountsTable({
+            scope: planet.name,
+          }),
+          [{ balance: '99990.0000 PROPDAC' }]
+        );
         await shared.dacproposals_contract.startwork(arbApproveId, dacId, {
           auths: [
             {
@@ -2076,9 +2084,23 @@ describe('Dacproposals', () => {
             },
           ],
         });
+        await assertRowsEqual(
+          shared.dac_token_contract.accountsTable({
+            scope: planet.name,
+          }),
+          [{ balance: '99980.0000 PROPDAC' }]
+        );
         await sleep(6000);
       });
       context('called by user other than arbiter', async () => {
+        it('establish planet balance', async () => {
+          await assertRowsEqual(
+            shared.dac_token_contract.accountsTable({
+              scope: planet.name,
+            }),
+            [{ balance: '99980.0000 PROPDAC' }]
+          );
+        });
         it('It should not arbiter error', async () => {
           await assertEOSErrorIncludesMessage(
             shared.dacproposals_contract.arbapprove(
@@ -2152,7 +2174,7 @@ describe('Dacproposals', () => {
             shared.dac_token_contract.accountsTable({
               scope: arbiter.name,
             }),
-            [{ balance: '20000.0000 PROPDAC' }]
+            [{ balance: '20010.0000 PROPDAC' }]
           );
         });
         it('dacescrow should be loaded with arbiter funds', async () => {
@@ -2163,12 +2185,12 @@ describe('Dacproposals', () => {
             [{ balance: '10.0000 PROPDAC' }]
           );
         });
-        it('planet should sent funds to escrow', async () => {
+        it('arbiter pay should not get refunded to planet', async () => {
           await assertRowsEqual(
             shared.dac_token_contract.accountsTable({
               scope: planet.name,
             }),
-            [{ balance: '99990.0000 PROPDAC' }]
+            [{ balance: '99980.0000 PROPDAC' }]
           );
         });
       });
@@ -2202,6 +2224,12 @@ describe('Dacproposals', () => {
           });
         });
         it('It should succeed to allow arbapprove', async () => {
+          await assertRowsEqual(
+            shared.dac_token_contract.accountsTable({
+              scope: arbiter.name,
+            }),
+            [{ balance: '20010.0000 PROPDAC' }]
+          );
           const escrowAction: EosioAction = {
             account: shared.dacescrow_contract.account.name,
             name: 'approve',
@@ -2241,7 +2269,7 @@ describe('Dacproposals', () => {
             shared.dac_token_contract.accountsTable({
               scope: arbiter.name,
             }),
-            [{ balance: '20010.0000 PROPDAC' }]
+            [{ balance: '20020.0000 PROPDAC' }]
           );
         });
 
@@ -2250,7 +2278,7 @@ describe('Dacproposals', () => {
             shared.dac_token_contract.accountsTable({
               scope: planet.name,
             }),
-            [{ balance: '99990.0000 PROPDAC' }]
+            [{ balance: '99980.0000 PROPDAC' }]
           );
         });
       });
@@ -2436,7 +2464,7 @@ describe('Dacproposals', () => {
               shared.dac_token_contract.accountsTable({
                 scope: arbiter.name,
               }),
-              [{ balance: '20020.0000 PROPDAC' }]
+              [{ balance: '20030.0000 PROPDAC' }]
             );
           });
           it('dacescrow should be sent arbiter funds', async () => {
@@ -2452,7 +2480,7 @@ describe('Dacproposals', () => {
               shared.dac_token_contract.accountsTable({
                 scope: planet.name,
               }),
-              [{ balance: '99980.0000 PROPDAC' }]
+              [{ balance: '99970.0000 PROPDAC' }]
             );
           });
         });
@@ -2523,16 +2551,16 @@ describe('Dacproposals', () => {
               shared.dac_token_contract.accountsTable({
                 scope: arbiter.name,
               }),
-              [{ balance: '20020.0000 PROPDAC' }]
+              [{ balance: '20030.0000 PROPDAC' }]
             );
           });
 
-          it('dacescrow arbiter funds should be returned to planet', async () => {
+          it('dacescrow arbiter funds should not be returned to planet', async () => {
             await assertRowsEqual(
               shared.dac_token_contract.accountsTable({
                 scope: planet.name,
               }),
-              [{ balance: '99980.0000 PROPDAC' }]
+              [{ balance: '99970.0000 PROPDAC' }]
             );
           });
         });
@@ -3381,7 +3409,6 @@ async function setup_planet() {
 }
 
 async function setup_permissions() {
-  console.log('Ohai setup_permissions');
   await SharedTestObjects.add_custom_permission_and_link(
     shared.daccustodian_contract.account,
     'wlman',
@@ -3389,5 +3416,4 @@ async function setup_permissions() {
     'rmvwl',
     shared.dacproposals_contract.account
   );
-  console.log('DONE.');
 }
