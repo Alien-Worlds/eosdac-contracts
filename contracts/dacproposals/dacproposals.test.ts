@@ -3416,4 +3416,11 @@ async function setup_permissions() {
     'rmvwl',
     shared.dacproposals_contract.account
   );
+  await SharedTestObjects.add_custom_permission_and_link(
+    shared.dacproposals_contract.account,
+    'wlman',
+    shared.dacproposals_contract.account,
+    'safermvarbwl',
+    shared.daccustodian_contract.account
+  );
 }

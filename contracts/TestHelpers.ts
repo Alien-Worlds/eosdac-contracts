@@ -109,7 +109,7 @@ export class SharedTestObjects {
     console.log('deployed token.worlds');
 
     this.dacproposals_contract = await debugPromise(
-      ContractDeployer.deployWithName('dacproposals', 'dacproposals'),
+      ContractDeployer.deployWithName('dacproposals', 'prop.worlds'),
       'created dacproposals'
     );
     console.log('deployed dacproposals');
