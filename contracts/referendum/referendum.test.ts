@@ -518,7 +518,7 @@ async function setup_token() {
     { from: shared.tokenIssuer }
   );
   await shared.dac_token_contract.stakeconfig(
-    { enabled: true, min_stake_time: 5, max_stake_time: 20 },
+    { enabled: true, min_stake_time: 1233, max_stake_time: 20 },
     '4,REF',
     { from: shared.auth_account }
   );
