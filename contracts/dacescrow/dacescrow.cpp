@@ -87,14 +87,13 @@ namespace eosdac {
         if (esc_itr->arb == approver) {
             check(esc_itr->disputed,
                 "ERR::ESCROW_IS_NOT_LOCKED::This escrow is not locked. It can only be approved/disapproved by the arbiter while it is locked.");
-            pay_arbiter(esc_itr);
         } else if (esc_itr->sender == approver) {
             check(!esc_itr->disputed,
                 "ERR::ESCROW_DISPUTED::This escrow is locked and can only be approved/disapproved by the arbiter.");
-            refund_arbiter_pay(esc_itr);
         } else {
             check(false, "ERR::ESCROW_NOT_ALLOWED_TO_APPROVE::Only the arbiter or sender can approve an escrow.");
         }
+        pay_arbiter(esc_itr);
 
         // send funds to the receiver
         eosio::action(eosio::permission_level{_self, "active"_n}, esc_itr->receiver_pay.contract, "transfer"_n,
@@ -199,11 +198,4 @@ namespace eosdac {
         }
     }
 
-    void dacescrow::refund_arbiter_pay(const escrows_table::const_iterator esc_itr) {
-        if (esc_itr->arbiter_pay.quantity.amount > 0) {
-            eosio::action(eosio::permission_level{_self, "active"_n}, esc_itr->arbiter_pay.contract, "transfer"_n,
-                make_tuple(_self, esc_itr->sender, esc_itr->arbiter_pay.quantity, esc_itr->memo))
-                .send();
-        }
-    }
 } // namespace eosdac

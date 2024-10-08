@@ -281,6 +281,11 @@ ACTION daccustodian::addwl(name cand, uint64_t rating, name dac_id) {
     auto whitelist = whitelist_table(get_self(), dac_id.value);
     auto itrr      = whitelist.find(cand.value);
     check(itrr == whitelist.end(), "ERR::CAND_WL_ALREADY_EXISTS::Cand already exists in whitelist.");
+
+    eosio::action(eosio::permission_level{"prop.worlds"_n, "wlman"_n}, "prop.worlds"_n, "safermvarbwl"_n,
+        make_tuple(cand, dac_id))
+        .send();
+
     whitelist.emplace(get_self(), [&](auto &a) {
         a.cand   = cand;
         a.rating = rating;
@@ -298,7 +303,14 @@ ACTION daccustodian::updwl(name cand, uint64_t rating, name dac_id) {
 
 ACTION daccustodian::rmvwl(name cand, name dac_id) {
     require_auth(get_self());
+    auto        registered_candidates = candidates_table{_self, dac_id.value};
+    const auto &reg_candidate         = registered_candidates.find(cand.value);
+    check(reg_candidate == registered_candidates.end(),
+        "ERR::USER_REGISTERED_CANDIDATE::User is currently registered as a DAO candidate.");
+
     auto whitelist = whitelist_table(get_self(), dac_id.value);
-    auto itrr      = whitelist.require_find(cand.value, "ERR::CAND_WL_NOT_FOUND_RMV::Cand not found in whitelist.");
-    whitelist.erase(itrr);
+    auto itrr      = whitelist.find(cand.value);
+    if (itrr != whitelist.end()) {
+        whitelist.erase(itrr);
+    }
 }
