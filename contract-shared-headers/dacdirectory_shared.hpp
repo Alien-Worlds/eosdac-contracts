@@ -65,11 +65,14 @@ namespace eosdac {
              * custodians.
              *
              */
-            REFERENDUM = 10,
-            SPENDINGS  = 11, // Account to hold all the spending allowance for the current period.
-            PROP_FUNDS = 12, // Account to hold all the Proposal funds allowance.
-            EXTERNAL   = 254,
-            OTHER      = 255
+            REFERENDUM        = 10,
+            SPENDINGS         = 11, // Account to hold all the spending allowance for the current period.
+            PROP_FUNDS        = 12, // Account to hold all the Proposal funds for deposits only.
+            PROP_FUNDS_SOURCE = 13, // Account to hold all the Proposal funds for spending only. This is to ensure that
+                                    // the union daos have spending access but the syndicates only have deposit access.
+
+            EXTERNAL = 254,
+            OTHER    = 255
         };
 
         enum ref_type : uint8_t {
