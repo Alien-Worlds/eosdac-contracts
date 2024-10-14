@@ -302,7 +302,7 @@ namespace eosdac {
 
     // clang-format off
     SINGLETON(dacglobals, daccustodian, 
-            PROPERTY_OPTIONAL_TYPECASTING(uint16_t, uint32_t, budget_percentage);
+            PROPERTY_OPTIONAL_TYPECASTING(uint16_t, uint32_t, budget_percentage); // No longer needed. Use prop_budget_percentage and remaining budget is derived from the total balance.
             PROPERTY_OPTIONAL_TYPECASTING(uint16_t, uint32_t, prop_budget_percentage);
             PROPERTY(time_point_sec, lastclaimbudgettime); 
             PROPERTY(int64_t, total_weight_of_votes);
@@ -327,6 +327,8 @@ namespace eosdac {
             PROPERTY(uint64_t, token_supply_theshold);
             PROPERTY(bool, maintenance_mode);
             PROPERTY_OPTIONAL_TYPECASTING(bool, bool, requires_whitelist);
+            PROPERTY_OPTIONAL_TYPECASTING(asset, asset, prop_budget_amount);
+            PROPERTY_OPTIONAL_TYPECASTING(asset, asset, spendings_budget_amount);
     )
     // clang-format on
 
@@ -476,7 +478,6 @@ namespace eosdac {
         void             validateUnstake(name code, name cand, name dac_id);
         void validateUnstakeAmount(const name &code, const name &cand, const asset &unstake_amount, const name &dac_id);
         void validateMinStake(name account, name dac_id);
-        uint16_t       get_budget_percentage(const name &dac_id, const dacglobals &globals);
         time_point_sec calc_avg_vote_time(const candidate &cand);
         void update_number_of_votes(const vector<name> &oldvotes, const vector<name> &newvotes, const name &dac_id);
 
