@@ -97,7 +97,7 @@ export class SharedTestObjects {
     console.log('deployed index.worlds');
 
     this.daccustodian_contract = await debugPromise(
-      ContractDeployer.deployWithName('daccustodian', 'daccustodian'),
+      ContractDeployer.deployWithName('daccustodian', 'dao.worlds'),
       'created daccustodian'
     );
     console.log('deployed daccustodian');
@@ -109,7 +109,7 @@ export class SharedTestObjects {
     console.log('deployed token.worlds');
 
     this.dacproposals_contract = await debugPromise(
-      ContractDeployer.deployWithName('dacproposals', 'dacproposals'),
+      ContractDeployer.deployWithName('dacproposals', 'prop.worlds'),
       'created dacproposals'
     );
     console.log('deployed dacproposals');
@@ -953,6 +953,85 @@ export class SharedTestObjects {
     const name = sb.getName();
 
     return name;
+  }
+
+  static async add_custom_permission(
+    account,
+    name,
+    parent = 'active',
+    contract = null
+  ) {
+    if (account.account) {
+      account = account.account;
+    }
+    if (contract == null) {
+      contract = account;
+    }
+    await UpdateAuth.execUpdateAuth(
+      account.active,
+      account.name,
+      name,
+      parent,
+      UpdateAuth.AuthorityToSet.forContractCode(contract)
+    );
+  }
+  static async linkauth(
+    permission_owner,
+    permission_name,
+    action_owner,
+    action_names
+  ) {
+    if (permission_owner.account) {
+      permission_owner = permission_owner.account;
+    }
+    if (action_owner.account) {
+      action_owner = action_owner.account;
+    }
+    if (!Array.isArray(action_names)) {
+      action_names = [action_names];
+    }
+    for (const action_name of action_names) {
+      await UpdateAuth.execLinkAuth(
+        permission_owner.active,
+        permission_owner.name,
+        action_owner.name,
+        action_name,
+        permission_name
+      );
+    }
+  }
+  static async add_custom_permission_and_link(
+    permission_owner,
+    permission_name,
+    action_owner,
+    action_names,
+    contract = null
+  ) {
+    await SharedTestObjects.add_custom_permission(
+      permission_owner,
+      permission_name,
+      'active',
+      contract
+    );
+
+    try {
+      await SharedTestObjects.linkauth(
+        permission_owner,
+        permission_name,
+        action_owner,
+        action_names
+      );
+    } catch (e) {
+      if (
+        e.message.includes(
+          'Attempting to update required authority, but new requirement is same as old'
+        )
+      ) {
+        console.log('Ignoring error: ', e.message);
+      } else {
+        throw e;
+      }
+    }
   }
 }
 

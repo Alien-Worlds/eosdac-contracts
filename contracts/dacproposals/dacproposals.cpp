@@ -477,6 +477,14 @@ namespace eosdac {
         clearprop(prop, dac_id);
     }
 
+    ACTION dacproposals::rmvcompleted(name proposal_id, name dac_id) {
+        proposal_table proposals(_self, dac_id.value);
+        const proposal prop = proposals.get(proposal_id.value, "ERR::PROPOSAL_NOT_FOUND::Proposal not found.");
+        check(prop.state == STATE_COMPLETED, "ERR::PROPOSAL_NOT_COMPLETED::Proposal not completed.");
+
+        clearprop(prop, dac_id);
+    }
+
     ACTION dacproposals::updpropvotes(name proposal_id, name dac_id) {
         proposal_table proposals(_self, dac_id.value);
 
@@ -547,14 +555,19 @@ namespace eosdac {
 
     void dacproposals::transferfunds(const proposal &prop, name dac_id) {
         proposal_table proposals(_self, dac_id.value);
-        auto           funding_source = dacdir::dac_for_id(dac_id).account_for_type(dacdir::SPENDINGS);
-        auto           escrow         = dacdir::dac_for_id(dac_id).account_for_type(dacdir::ESCROW);
+        auto           proposal_itr = proposals.find(prop.proposal_id.value);
+        check(proposal_itr != proposals.end(), "ERR::PROPOSAL_NOT_FOUND::Proposal not found");
+
+        auto funding_source = dacdir::dac_for_id(dac_id).account_for_type(dacdir::SPENDINGS);
+        auto escrow         = dacdir::dac_for_id(dac_id).account_for_type(dacdir::ESCROW);
 
         eosio::action(eosio::permission_level{funding_source, "active"_n}, escrow, "approve"_n,
             make_tuple(prop.proposal_id.value, funding_source, dac_id))
             .send();
 
-        clearprop(prop, dac_id);
+        proposals.modify(proposal_itr, prop.proposer, [&](proposal &p) {
+            p.state = STATE_COMPLETED;
+        });
     }
 
     void dacproposals::clearprop(const proposal &proposal, name dac_id) {
@@ -718,7 +731,9 @@ namespace eosdac {
         check(prop.state == STATE_DISPUTED,
             "ERR::PROP_NOT_IN_DISPUTE_STATE::A proposal can only be denied by an arbiter when in dispute state.");
 
-        clearprop(prop, dac_id);
+        proposals.modify(prop, prop.proposer, [&](proposal &p) {
+            p.state = STATE_COMPLETED;
+        });
     }
 
     void dacproposals::receive(name from, name to, asset quantity, string memo) {
@@ -784,6 +799,11 @@ namespace eosdac {
         auto arbiter_itr      = arbiterwhitelist.find(arbiter.value);
         check(
             arbiter_itr == arbiterwhitelist.end(), "ERR::ARBITER_ALREADY_EXISTS::Arbiter already exists in whitelist.");
+
+        eosio::action(
+            eosio::permission_level{"dao.worlds"_n, "wlman"_n}, "dao.worlds"_n, "rmvwl"_n, make_tuple(arbiter, dac_id))
+            .send();
+
         arbiterwhitelist.emplace(get_self(), [&](auto &a) {
             a.arbiter = arbiter;
             a.rating  = rating;
@@ -806,6 +826,25 @@ namespace eosdac {
         auto arbiter_itr =
             arbiterwhitelist.require_find(arbiter.value, "ERR::ARBITER_NOT_FOUND::Arbiter not found in whitelist.");
         arbiterwhitelist.erase(arbiter_itr);
+    }
+
+    void dacproposals::safermvarbwl(name arbiter, name dac_id) {
+        require_auth(get_self());
+        auto props_table    = proposal_table(get_self(), dac_id.value);
+        auto prop_arb_index = props_table.get_index<"arbiter"_n>();
+        auto prop_itr       = prop_arb_index.find(arbiter.value);
+
+        while (prop_itr != prop_arb_index.end() && prop_itr->arbiter == arbiter) {
+            check(prop_itr->state.value == ProposalStateExpired || prop_itr->state.value == ProposalStateCompleted,
+                "ERR::ARBITER_IN_USE::Arbiter is still in use by a proposal.");
+            prop_itr++;
+        }
+
+        auto arbiterwhitelist = arbiterwhitelist_table(get_self(), dac_id.value);
+        auto arbiter_itr      = arbiterwhitelist.find(arbiter.value);
+        if (arbiter_itr != arbiterwhitelist.end()) {
+            arbiterwhitelist.erase(arbiter_itr);
+        }
     }
 
 } // namespace eosdac

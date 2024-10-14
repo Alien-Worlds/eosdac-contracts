@@ -48,6 +48,14 @@ describe('Daccustodian', () => {
     await sleep(20000);
     shared = await SharedTestObjects.getInstance();
     somebody = await AccountManager.createAccount();
+
+    await SharedTestObjects.add_custom_permission_and_link(
+      shared.dacproposals_contract.account,
+      'wlman',
+      shared.dacproposals_contract.account,
+      'safermvarbwl',
+      shared.daccustodian_contract.account
+    );
   });
 
   context('fillstate', async () => {
@@ -3923,7 +3931,7 @@ describe('Daccustodian', () => {
       });
     });
     context('claimbudget when prop budget percentage is set', async () => {
-      const dacId = 'propdac';
+      const dacId = 'propdax';
       let expected_transfer_amount;
       let treasury_balance_before;
       let prop_funds_balance_before;
@@ -3931,12 +3939,12 @@ describe('Daccustodian', () => {
       before(async () => {
         console.log('Ohai 1');
         prop_funds_account = await AccountManager.createAccount('propfunds');
-        await shared.initDac(dacId, '4,PROPDAC', '1000000.0000 PROPDAC');
+        await shared.initDac(dacId, '4,PROPDAX', '1000000.0000 PROPDAX');
         console.log('Ohai 2');
-        await shared.updateconfig(dacId, '12.0000 PROPDAC');
+        await shared.updateconfig(dacId, '12.0000 PROPDAX');
         await shared.dac_token_contract.stakeconfig(
           { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
-          '4,PROPDAC',
+          '4,PROPDAX',
           { from: shared.auth_account }
         );
 
@@ -3972,11 +3980,11 @@ describe('Daccustodian', () => {
         );
         console.log('Ohai 3');
 
-        regMembers = await shared.getRegMembers(dacId, '20000.0000 PROPDAC');
+        regMembers = await shared.getRegMembers(dacId, '20000.0000 PROPDAX');
         console.log('Ohai 4');
         candidates = await shared.getStakeObservedCandidates(
           dacId,
-          '12.0000 PROPDAC'
+          '12.0000 PROPDAX'
         );
         console.log('Ohai 5');
         await shared.voteForCustodians(regMembers, candidates, dacId);

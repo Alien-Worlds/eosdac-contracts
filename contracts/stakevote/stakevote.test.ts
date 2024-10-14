@@ -285,6 +285,7 @@ describe('Stakevote', () => {
                   },
                   should_pay_via_service_provider: false,
                   lockup_release_time_delay: 1233,
+                  pending_period_delay: 4,
                 },
                 dacId,
                 { from: shared.auth_account }

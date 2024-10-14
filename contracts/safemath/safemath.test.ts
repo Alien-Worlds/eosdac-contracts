@@ -20,10 +20,7 @@ let contract;
 
 describe('Safemath', () => {
   before(async () => {
-    contract = await ContractDeployer.deployWithName(
-      'contracts/safemath/safemath',
-      'safemath'
-    );
+    contract = await ContractDeployer.deployWithName('safemath', 'safemath');
   });
   it('testuint should work', async () => {
     await contract.testuint();

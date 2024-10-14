@@ -90,6 +90,5 @@ namespace eosdac {
 
       private:
         void pay_arbiter(const escrows_table::const_iterator esc_itr);
-        void refund_arbiter_pay(const escrows_table::const_iterator esc_itr);
     };
 } // namespace eosdac
