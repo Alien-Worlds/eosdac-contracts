@@ -12,8 +12,8 @@ ACTION daccustodian::updateconfige(const contr_config &new_config, const name &d
     require_auth(get_self());
 #endif
 
-    check(new_config.numelected <= 67,
-        "ERR::UPDATECONFIG_INVALID_NUM_ELECTED::The number of elected custodians must be <= 67");
+    check(new_config.numelected <= 21,
+        "ERR::UPDATECONFIG_INVALID_NUM_ELECTED::The number of elected custodians must be <= 21");
     check(new_config.maxvotes <= new_config.numelected,
         "ERR::UPDATECONFIG_INVALID_MAX_VOTES::The number of max votes must be less than the number of elected candidates.");
 
@@ -111,7 +111,7 @@ ACTION daccustodian::setnumelect(const uint8_t &numelected, const name &dac_id) 
 
     auto globals = dacglobals{get_self(), dac_id};
 
-    check(numelected <= 67, "ERR::SETNUMELECT_INVALID_VALUE::The number of elected candidates must be <= 67");
+    check(numelected <= 21, "ERR::SETNUMELECT_INVALID_VALUE::The number of elected candidates must be <= 21");
     check(numelected > 0, "ERR::SETNUMELECT_INVALID_VALUE::Number of elected candidates must be greater than zero.");
     check(numelected > 2 * globals.get_maxvotes(),
         "ERR::SETNUMELECT_LESS_THAN_MAXVOTES::Number of elected candidates cannot be less than max votes.");
