@@ -96,9 +96,6 @@ describe('Dacproposals', () => {
       'propsource'
     );
     await setup_test_user(prop_funds_source_account, 'PROPDAC');
-    // await eosiotoken.create(shared.tokenIssuer.name, `10000000000.0000 EOS`, {
-    //   from: eosiotoken.account,
-    // });
     const eos_issuer = new Account('eosio');
     await eosiotoken.issue(
       eos_issuer.name,
