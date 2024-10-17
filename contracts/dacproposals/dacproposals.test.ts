@@ -15,7 +15,7 @@ import {
 
 import { EosioToken } from '../external_contracts/eosio.token/eosio.token';
 
-import { SharedTestObjects } from '../TestHelpers';
+import { Account_type, SharedTestObjects } from '../TestHelpers';
 import * as chai from 'chai';
 import { expect } from 'chai';
 
@@ -39,7 +39,7 @@ enum ProposalState {
 
 const proposalHash = 'jhsdfkjhsdfkjhkjsdf';
 let planet: Account;
-
+let prop_funds_source_account: Account;
 describe('Dacproposals', () => {
   let otherAccount: Account;
   let proposer1Account: Account;
@@ -92,24 +92,67 @@ describe('Dacproposals', () => {
     arbiter = regMembers[2];
     proposer1Account = regMembers[3];
     delegateeCustodian = propDacCustodians[4];
-
+    prop_funds_source_account = await AccountManager.createAccount(
+      'propsource'
+    );
+    await setup_test_user(prop_funds_source_account, 'PROPDAC');
+    // await eosiotoken.create(shared.tokenIssuer.name, `10000000000.0000 EOS`, {
+    //   from: eosiotoken.account,
+    // });
+    const eos_issuer = new Account('eosio');
+    await eosiotoken.issue(
+      eos_issuer.name,
+      '10000000.0000 EOS',
+      'initial deposit',
+      {
+        from: eos_issuer,
+      }
+    );
+    await eosiotoken.transfer(
+      eos_issuer.name,
+      prop_funds_source_account.name,
+      `1500.0000 EOS`,
+      '',
+      { from: eos_issuer }
+    );
     await debugPromise(
-      UpdateAuth.execUpdateAuth(planet.active, planet.name, 'active', 'owner', {
-        accounts: [
-          {
-            permission: {
-              actor: shared.dacproposals_contract.account.name,
-              permission: 'eosio.code',
+      UpdateAuth.execUpdateAuth(
+        prop_funds_source_account.active,
+        prop_funds_source_account.name,
+        'active',
+        'owner',
+        {
+          accounts: [
+            {
+              permission: {
+                actor: shared.dacproposals_contract.account.name,
+                permission: 'eosio.code',
+              },
+              weight: 1,
             },
-            weight: 1,
-          },
-          { permission: { actor: planet.name, permission: 'high' }, weight: 1 },
-        ],
-        keys: [],
-        threshold: 1,
-        waits: [],
-      }),
+            {
+              permission: { actor: planet.name, permission: 'high' },
+              weight: 1,
+            },
+          ],
+          keys: [],
+          threshold: 1,
+          waits: [],
+        }
+      ),
       'make high the active of the planet'
+    );
+
+    await shared.dacdirectory_contract.regaccount(
+      dacId,
+      prop_funds_source_account.name,
+      Account_type.PROP_FUNDS_SOURCE,
+      {
+        auths: [
+          { actor: shared.dacdirectory_contract.name, permission: 'active' },
+          { actor: shared.auth_account.name, permission: 'active' },
+        ],
+      }
     );
   });
   context('updateconfig', async () => {
@@ -1437,7 +1480,7 @@ describe('Dacproposals', () => {
           });
           const row = proposalRow.rows[0];
           chai.expect(row.key).to.eq(newpropid);
-          chai.expect(row.sender).to.eq(planet.name);
+          chai.expect(row.sender).to.eq(prop_funds_source_account.name);
           chai.expect(row.receiver).to.eq(proposer1Account.name);
           chai.expect(row.arb).to.eq(arbiter.name);
           chai.expect(row.receiver_pay.quantity).to.eq('100.0000 EOS');
@@ -1860,12 +1903,12 @@ describe('Dacproposals', () => {
                 [{ balance: '10.0000 PROPDAC' }]
               );
             });
-            it('planet should sent funds to escrow', async () => {
+            it('planet should not send funds to escrow', async () => {
               await assertRowsEqual(
                 shared.dac_token_contract.accountsTable({
                   scope: planet.name,
                 }),
-                [{ balance: '99990.0000 PROPDAC' }]
+                [{ balance: '101200.0000 PROPDAC' }]
               );
             });
           });
@@ -1941,7 +1984,7 @@ describe('Dacproposals', () => {
                 shared.dac_token_contract.accountsTable({
                   scope: planet.name,
                 }),
-                [{ balance: '99990.0000 PROPDAC' }]
+                [{ balance: '101200.0000 PROPDAC' }]
               );
             });
           });
@@ -1976,7 +2019,7 @@ describe('Dacproposals', () => {
           shared.dac_token_contract.accountsTable({
             scope: planet.name,
           }),
-          [{ balance: '99990.0000 PROPDAC' }]
+          [{ balance: '101200.0000 PROPDAC' }]
         );
       });
       it('should fail with proposal not found error', async () => {
@@ -2070,7 +2113,7 @@ describe('Dacproposals', () => {
           shared.dac_token_contract.accountsTable({
             scope: planet.name,
           }),
-          [{ balance: '99990.0000 PROPDAC' }]
+          [{ balance: '101200.0000 PROPDAC' }]
         );
         await shared.dacproposals_contract.startwork(arbApproveId, dacId, {
           auths: [
@@ -2088,7 +2131,7 @@ describe('Dacproposals', () => {
           shared.dac_token_contract.accountsTable({
             scope: planet.name,
           }),
-          [{ balance: '99980.0000 PROPDAC' }]
+          [{ balance: '101200.0000 PROPDAC' }]
         );
         await sleep(6000);
       });
@@ -2098,7 +2141,7 @@ describe('Dacproposals', () => {
             shared.dac_token_contract.accountsTable({
               scope: planet.name,
             }),
-            [{ balance: '99980.0000 PROPDAC' }]
+            [{ balance: '101200.0000 PROPDAC' }]
           );
         });
         it('It should not arbiter error', async () => {
@@ -2190,7 +2233,7 @@ describe('Dacproposals', () => {
             shared.dac_token_contract.accountsTable({
               scope: planet.name,
             }),
-            [{ balance: '99980.0000 PROPDAC' }]
+            [{ balance: '101200.0000 PROPDAC' }]
           );
         });
       });
@@ -2278,7 +2321,7 @@ describe('Dacproposals', () => {
             shared.dac_token_contract.accountsTable({
               scope: planet.name,
             }),
-            [{ balance: '99980.0000 PROPDAC' }]
+            [{ balance: '101200.0000 PROPDAC' }]
           );
         });
       });
@@ -2475,12 +2518,20 @@ describe('Dacproposals', () => {
               [{ balance: '0.0000 PROPDAC' }]
             );
           });
-          it('planet should sent funds to escrow', async () => {
+          it('planet should not sent funds to escrow', async () => {
             await assertRowsEqual(
               shared.dac_token_contract.accountsTable({
                 scope: planet.name,
               }),
-              [{ balance: '99970.0000 PROPDAC' }]
+              [{ balance: '101200.0000 PROPDAC' }]
+            );
+          });
+          it('prop funding source should send funds to escrow', async () => {
+            await assertRowsEqual(
+              shared.dac_token_contract.accountsTable({
+                scope: prop_funds_source_account.name,
+              }),
+              [{ balance: '1170.0000 PROPDAC' }]
             );
           });
         });
@@ -2560,7 +2611,7 @@ describe('Dacproposals', () => {
               shared.dac_token_contract.accountsTable({
                 scope: planet.name,
               }),
-              [{ balance: '99970.0000 PROPDAC' }]
+              [{ balance: '101200.0000 PROPDAC' }]
             );
           });
         });
@@ -2729,7 +2780,7 @@ describe('Dacproposals', () => {
             );
 
             expect(escrow.receiver).to.equal(proposer1Account.name);
-            expect(escrow.sender).to.equal(planet.name);
+            expect(escrow.sender).to.equal(prop_funds_source_account.name);
             expect(escrow.receiver_pay.quantity).to.equal('106.0000 EOS');
             expect(escrow.receiver_pay.contract).to.equal('eosio.token');
             expect(escrow.memo).to.equal(
@@ -3422,5 +3473,12 @@ async function setup_permissions() {
     shared.dacproposals_contract.account,
     'safermvarbwl',
     shared.daccustodian_contract.account
+  );
+  await SharedTestObjects.add_custom_permission_and_link(
+    shared.dacproposals_contract.account,
+    'notify',
+    shared.dacproposals_contract.account,
+    'notfyrmv',
+    shared.dacproposals_contract.account
   );
 }
