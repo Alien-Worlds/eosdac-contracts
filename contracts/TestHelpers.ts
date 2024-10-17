@@ -1072,6 +1072,7 @@ export enum Account_type {
   REFERENDUM = 10,
   SPENDINGS = 11,
   PROP_FUNDS = 12,
+  PROP_FUNDS_SOURCE = 13,
   EXTERNAL = 254,
   OTHER = 255,
 }
