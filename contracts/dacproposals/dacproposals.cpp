@@ -44,10 +44,10 @@ namespace eosdac {
             "ERR::CREATEPROP_INVALID_proposal_pay::Invalid pay amount. Must be greater than 0.");
         check(is_account(arbiter), "ERR::CREATEPROP_INVALID_arbiter::Invalid arbiter.");
 
-        auto dac            = dacdir::dac_for_id(dac_id);
-        auto funding_source = dac.account_for_type(dacdir::SPENDINGS);
-        auto auth           = dac.owner;
-        check(arbiter != auth && arbiter != funding_source, "arbiter must be a third party");
+        auto dac              = dacdir::dac_for_id(dac_id);
+        auto dao_msig_account = dac.account_for_type(dacdir::MSIGOWNED);
+        auto auth             = dac.owner;
+        check(arbiter != auth && arbiter != dao_msig_account, "arbiter must be a third party");
         const auto current_configs = configs{get_self(), dac_id};
 
         const auto fee_required = current_configs.get_proposal_fee();
@@ -294,7 +294,7 @@ namespace eosdac {
 
         time_point_sec time_now = time_point_sec(current_time_point().sec_since_epoch());
 
-        const auto funding_source = dacdir::dac_for_id(dac_id).account_for_type(dacdir::SPENDINGS);
+        const auto funding_source = dacdir::dac_for_id(dac_id).account_for_type(dacdir::PROP_FUNDS_SOURCE);
         const auto escrow         = dacdir::dac_for_id(dac_id).account_for_type(dacdir::ESCROW);
 
         check(is_account(funding_source), "ERR::FUNDING_SOURCE_ACCOUNT_NOT_FOUND::Funding account not found");
@@ -558,7 +558,7 @@ namespace eosdac {
         auto           proposal_itr = proposals.find(prop.proposal_id.value);
         check(proposal_itr != proposals.end(), "ERR::PROPOSAL_NOT_FOUND::Proposal not found");
 
-        auto funding_source = dacdir::dac_for_id(dac_id).account_for_type(dacdir::SPENDINGS);
+        auto funding_source = dacdir::dac_for_id(dac_id).account_for_type(dacdir::PROP_FUNDS_SOURCE);
         auto escrow         = dacdir::dac_for_id(dac_id).account_for_type(dacdir::ESCROW);
 
         eosio::action(eosio::permission_level{funding_source, "active"_n}, escrow, "approve"_n,
@@ -586,7 +586,15 @@ namespace eosdac {
             itr = by_proposal.erase(itr);
         }
 
+        eosio::action(eosio::permission_level{get_self(), "notify"_n}, get_self(), "notfyrmv"_n,
+            make_tuple(*prop_to_erase, dac_id))
+            .send();
+
         proposals.erase(prop_to_erase);
+    }
+
+    void dacproposals::notfyrmv(const proposal &prop, name dac_id) {
+        require_auth(get_self());
     }
 
     int16_t dacproposals::count_votes(proposal prop, VoteType vote_type, name dac_id) {

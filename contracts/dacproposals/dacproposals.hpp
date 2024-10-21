@@ -196,6 +196,7 @@ namespace eosdac {
         ACTION addrecwl(name cand, uint64_t rating, name dac_id);
         ACTION updrecwl(name cand, uint64_t rating, name dac_id);
         ACTION rmvrecwl(name cand, name dac_id);
+        ACTION notfyrmv(const proposal &prop, name dac_id);
 
         [[eosio::on_notify("*::transfer")]] void receive(name from, name to, asset quantity, string memo);
         ACTION                                   minduration(uint32_t new_min_proposal_duration, name dac_id);
