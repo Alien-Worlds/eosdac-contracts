@@ -246,8 +246,8 @@ ACTION daccustodian::claimbudget(const name &dac_id) {
 
     const auto should_ramp_down_payments = (prop_budget_amount.has_value() && spending_budget_amount.has_value());
 
-    const auto prop_amount_to_transfer     = *prop_budget_amount;
-    const auto spending_amount_to_transfer = *spending_budget_amount;
+    const auto prop_amount_to_transfer     = prop_budget_amount.value_or(asset{0, TLM_SYM});
+    const auto spending_amount_to_transfer = spending_budget_amount.value_or(asset{0, TLM_SYM});
 
     // Check if there is enough in the treasury to cover the budget amounts
     if (should_ramp_down_payments && prop_amount_to_transfer + spending_amount_to_transfer < treasury_balance) {
@@ -255,9 +255,11 @@ ACTION daccustodian::claimbudget(const name &dac_id) {
             make_tuple(treasury_account, prop_recipient_account, prop_amount_to_transfer, wp_memo))
             .send();
 
-        action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
-            make_tuple(treasury_account, spendings_recipient_account, spending_amount_to_transfer, spendings_memo))
-            .send();
+        if (spendings_recipient_account) {
+            action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
+                make_tuple(treasury_account, *spendings_recipient_account, spending_amount_to_transfer, spendings_memo))
+                .send();
+        }
 
     } else { // If there is not enough in the treasury to cover the budget amounts, distribute the treasury balance
              // based on the budget percentage
@@ -280,9 +282,9 @@ ACTION daccustodian::claimbudget(const name &dac_id) {
 
         // Ensure we don't attempt to transfer more than the treasury balance and
         // leave 0.0001 TLM in the treasury to avoid deleting the balance row.
-        if (spendings_for_period.amount > 1) {
+        if (spendings_recipient_account && spendings_for_period.amount > 1) {
             action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
-                make_tuple(treasury_account, spendings_recipient_account, spendings_for_period, spendings_memo))
+                make_tuple(treasury_account, *spendings_recipient_account, spendings_for_period, spendings_memo))
                 .send();
         }
     }
