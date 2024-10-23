@@ -250,7 +250,7 @@ ACTION daccustodian::claimbudget(const name &dac_id) {
     const auto spending_amount_to_transfer = spending_budget_amount.value_or(asset{0, TLM_SYM});
 
     // Check if there is enough in the treasury to cover the budget amounts
-    if (should_ramp_down_payments && prop_amount_to_transfer + spending_amount_to_transfer < treasury_balance) {
+    if (should_ramp_down_payments && (prop_amount_to_transfer + spending_amount_to_transfer < treasury_balance)) {
         action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
             make_tuple(treasury_account, prop_recipient_account, prop_amount_to_transfer, wp_memo))
             .send();
