@@ -316,6 +316,20 @@ ACTION daccustodian::setprpbudget(const name &dac_id, const uint16_t percentage)
     globals.set_prop_budget_percentage(percentage);
 }
 
+ACTION daccustodian::setprpbudga(const name &dac_id, const asset &amount) {
+    require_auth(get_self());
+
+    auto globals = dacglobals{get_self(), dac_id};
+    globals.set_prop_budget_amount(amount);
+}
+
+ACTION daccustodian::setspendbudg(const name &dac_id, const asset &amount) {
+    require_auth(get_self());
+
+    auto globals = dacglobals{get_self(), dac_id};
+    globals.set_spendings_budget_amount(amount);
+}
+
 ACTION daccustodian::unsetbudget(const name &dac_id) {
     require_auth(get_self());
 

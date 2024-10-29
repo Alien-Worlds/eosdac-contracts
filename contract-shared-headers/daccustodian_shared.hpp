@@ -388,6 +388,8 @@ namespace eosdac {
         ACTION settokensup(const uint64_t &token_supply_theshold, const name &dac_id);
         ACTION setbudget(const name &dac_id, const uint16_t percentage);
         ACTION setprpbudget(const name &dac_id, const uint16_t percentage);
+        ACTION setprpbudga(const name &dac_id, const asset &amount);
+        ACTION setspendbudg(const name &dac_id, const asset &amount);
         ACTION unsetbudget(const name &dac_id);
         ACTION setrequirewl(const name &dac_id, bool required);
         ACTION addwl(name cand, uint64_t rating, name dac_id);
