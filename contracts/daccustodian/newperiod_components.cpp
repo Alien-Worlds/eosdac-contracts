@@ -274,9 +274,7 @@ ACTION daccustodian::claimbudget(const name &dac_id) {
         if (!prop_budget_percentage.has_value()) {
             return;
         }
-        const auto prop_allocation_for_period = running_treasury_balance * *prop_budget_percentage / 10000;
-        const auto prop_amount_to_transfer    = prop_allocation_for_period;
-
+        const auto prop_amount_to_transfer = running_treasury_balance * *prop_budget_percentage / 10000;
         if (prop_amount_to_transfer.amount > 0) {
             action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
                 make_tuple(treasury_account, prop_recipient_account, prop_amount_to_transfer, wp_memo))
@@ -296,6 +294,8 @@ ACTION daccustodian::claimbudget(const name &dac_id) {
             action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
                 make_tuple(treasury_account, *spendings_recipient_account, spendings_for_period, spendings_memo))
                 .send();
+
+            running_treasury_balance -= spendings_for_period;
         }
     }
     globals.set_lastclaimbudgettime(time_point_sec(current_time_point()));
