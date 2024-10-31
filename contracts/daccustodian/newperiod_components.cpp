@@ -237,27 +237,38 @@ ACTION daccustodian::claimbudget(const name &dac_id) {
     if (!spendings_recipient_account && !prop_recipient_account && !treasury_account) {
         return;
     }
-    const auto treasury_balance       = balance_for_type(dac, dacdir::TREASURY);
+    const auto treasury_balance_beginning = balance_for_type(dac, dacdir::TREASURY);
+    auto       running_treasury_balance   = treasury_balance_beginning;
+
     const auto prop_budget_amount     = globals.maybe_get_prop_budget_amount();
     const auto spending_budget_amount = globals.maybe_get_spendings_budget_amount();
 
     const auto wp_memo        = "period proposal budget"s;
     const auto spendings_memo = "period spendings budget"s;
 
-    const auto should_ramp_down_payments = (prop_budget_amount.has_value() && spending_budget_amount.has_value());
-
-    const auto prop_amount_to_transfer     = *prop_budget_amount;
-    const auto spending_amount_to_transfer = *spending_budget_amount;
+    const auto should_ramp_down_payments   = (prop_budget_amount.has_value() && spending_budget_amount.has_value());
+    const auto prop_amount_to_transfer     = prop_budget_amount.value_or(asset{0, TLM_SYM});
+    const auto spending_amount_to_transfer = spending_budget_amount.value_or(asset{0, TLM_SYM});
 
     // Check if there is enough in the treasury to cover the budget amounts
-    if (should_ramp_down_payments && prop_amount_to_transfer + spending_amount_to_transfer < treasury_balance) {
+    if (should_ramp_down_payments &&
+        (prop_amount_to_transfer + spending_amount_to_transfer < running_treasury_balance)) {
         action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
             make_tuple(treasury_account, prop_recipient_account, prop_amount_to_transfer, wp_memo))
             .send();
 
-        action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
-            make_tuple(treasury_account, spendings_recipient_account, spending_amount_to_transfer, spendings_memo))
-            .send();
+        running_treasury_balance -= prop_amount_to_transfer;
+
+        if (spendings_recipient_account) {
+            action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
+                make_tuple(treasury_account, *spendings_recipient_account, spending_amount_to_transfer, spendings_memo))
+                .send();
+
+            running_treasury_balance -= spending_amount_to_transfer;
+        } else {
+            check(false, "ERR::CLAIMBUDGET_SPENDINGS_RECIPIENT_NOT_FOUND::Spendings recipient not found. dac_id: %s",
+                dac_id);
+        }
 
     } else { // If there is not enough in the treasury to cover the budget amounts, distribute the treasury balance
              // based on the budget percentage
@@ -266,24 +277,28 @@ ACTION daccustodian::claimbudget(const name &dac_id) {
         if (!prop_budget_percentage.has_value()) {
             return;
         }
-        const auto prop_allocation_for_period = treasury_balance * *prop_budget_percentage / 10000;
-        const auto prop_amount_to_transfer    = prop_allocation_for_period;
-
+        const auto prop_amount_to_transfer = running_treasury_balance * *prop_budget_percentage / 10000;
         if (prop_amount_to_transfer.amount > 0) {
             action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
                 make_tuple(treasury_account, prop_recipient_account, prop_amount_to_transfer, wp_memo))
                 .send();
+
+            running_treasury_balance -= prop_amount_to_transfer;
         }
 
-        const asset treasury_balance     = balance_for_type(dac, dacdir::TREASURY);
-        const asset spendings_for_period = treasury_balance - asset{1, symbol{"TLM", 4}};
+        const asset spendings_for_period = running_treasury_balance - asset{1, symbol{"TLM", 4}};
 
         // Ensure we don't attempt to transfer more than the treasury balance and
         // leave 0.0001 TLM in the treasury to avoid deleting the balance row.
-        if (spendings_for_period.amount > 1) {
+        if (spendings_recipient_account && spendings_for_period.amount > 1) {
+            check(spendings_for_period <= running_treasury_balance,
+                "ERR::CLAIMBUDGET_SPENDINGS_AMOUNT_TOO_HIGH::Spendings amount is greater than the treasury balance. spendings_for_period: %s, Treasury balance: %s",
+                spendings_for_period, running_treasury_balance);
             action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
-                make_tuple(treasury_account, spendings_recipient_account, spendings_for_period, spendings_memo))
+                make_tuple(treasury_account, *spendings_recipient_account, spendings_for_period, spendings_memo))
                 .send();
+
+            running_treasury_balance -= spendings_for_period;
         }
     }
     globals.set_lastclaimbudgettime(time_point_sec(current_time_point()));
