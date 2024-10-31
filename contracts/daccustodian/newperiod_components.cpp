@@ -265,6 +265,9 @@ ACTION daccustodian::claimbudget(const name &dac_id) {
                 .send();
 
             running_treasury_balance -= spending_amount_to_transfer;
+        } else {
+            check(false, "ERR::CLAIMBUDGET_SPENDINGS_RECIPIENT_NOT_FOUND::Spendings recipient not found. dac_id: %s",
+                dac_id);
         }
 
     } else { // If there is not enough in the treasury to cover the budget amounts, distribute the treasury balance
