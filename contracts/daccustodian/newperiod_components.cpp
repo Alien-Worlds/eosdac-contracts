@@ -226,55 +226,77 @@ asset balance_for_type(const dacdir::dac &dac, const dacdir::account_type type) 
 }
 
 ACTION daccustodian::claimbudget(const name &dac_id) {
-    const auto dac          = dacdir::dac_for_id(dac_id);
-    const auto auth_account = dac.owner;
-    require_auth(auth_account);
+    const auto dac = dacdir::dac_for_id(dac_id);
+    require_auth(dac.owner);
     auto globals = dacglobals{get_self(), dac_id};
     check(globals.get_lastclaimbudgettime() < globals.get_lastperiodtime(),
         "Claimbudget can only be called once per period");
-    const auto treasury_account = dac.account_for_type(dacdir::TREASURY);
-
-    const auto prop_budget_percentage = globals.maybe_get_prop_budget_percentage();
-
-    if (prop_budget_percentage.has_value()) {
-        const auto treasury_balance           = balance_for_type(dac, dacdir::TREASURY);
-        const auto prop_allocation_for_period = treasury_balance * *prop_budget_percentage / 10000;
-        const auto prop_rounded_allocation_for_period =
-            std::max(prop_allocation_for_period, asset{100000, symbol{"TLM", 4}});
-        const auto prop_amount_to_transfer = std::min(treasury_balance, prop_rounded_allocation_for_period);
-        const auto prop_recipient          = dac.account_for_type(dacdir::PROP_FUNDS);
-
-        if (prop_amount_to_transfer.amount > 0) {
-            action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
-                make_tuple(treasury_account, prop_recipient, prop_amount_to_transfer, "period proposal budget"s))
-                .send();
-        }
-    }
-    const auto spendings_account = dac.account_for_type_maybe(dacdir::SPENDINGS);
-
-    if (!spendings_account && !auth_account) {
+    const auto treasury_account            = dac.account_for_type(dacdir::TREASURY);
+    const auto prop_recipient_account      = dac.account_for_type(dacdir::PROP_FUNDS);
+    const auto spendings_recipient_account = dac.account_for_type_maybe(dacdir::SPENDINGS);
+    if (!spendings_recipient_account && !prop_recipient_account && !treasury_account) {
         return;
     }
+    const auto treasury_balance_beginning = balance_for_type(dac, dacdir::TREASURY);
+    auto       running_treasury_balance   = treasury_balance_beginning;
 
-    const auto recipient         = spendings_account ? *spendings_account : auth_account;
-    const auto treasury_balance  = balance_for_type(dac, dacdir::TREASURY);
-    const auto budget_percentage = get_budget_percentage(dac_id, globals);
-    if (budget_percentage) {
+    const auto prop_budget_amount     = globals.maybe_get_prop_budget_amount();
+    const auto spending_budget_amount = globals.maybe_get_spendings_budget_amount();
 
-        // percentage value is scaled by 100, so to calculate percent we need to divide by (100 * 100 == 10000)
-        const auto allocation_for_period = treasury_balance * budget_percentage / 10000;
+    const auto wp_memo        = "period proposal budget"s;
+    const auto spendings_memo = "period spendings budget"s;
 
-        // if the calculated allocation_for_period is very small round it up to 10 TLM or the full treasury balance to
-        // avoid dust transactions for low percentage/balances in treasury.
-        const auto rounded_allocation_for_period = std::max(allocation_for_period, asset{100000, symbol{"TLM", 4}});
+    const auto should_ramp_down_payments   = (prop_budget_amount.has_value() && spending_budget_amount.has_value());
+    const auto prop_amount_to_transfer     = prop_budget_amount.value_or(asset{0, TLM_SYM});
+    const auto spending_amount_to_transfer = spending_budget_amount.value_or(asset{0, TLM_SYM});
 
-        // Because this has been rounded up, ensure we don't attempt to transfer more than the treasury balance.
-        const auto amount_to_transfer = std::min(treasury_balance, rounded_allocation_for_period);
+    // Check if there is enough in the treasury to cover the budget amounts
+    if (should_ramp_down_payments &&
+        (prop_amount_to_transfer + spending_amount_to_transfer < running_treasury_balance)) {
+        action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
+            make_tuple(treasury_account, prop_recipient_account, prop_amount_to_transfer, wp_memo))
+            .send();
 
-        if (amount_to_transfer.amount > 0) {
+        running_treasury_balance -= prop_amount_to_transfer;
+
+        if (spendings_recipient_account) {
             action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
-                make_tuple(treasury_account, recipient, amount_to_transfer, "period budget"s))
+                make_tuple(treasury_account, *spendings_recipient_account, spending_amount_to_transfer, spendings_memo))
                 .send();
+
+            running_treasury_balance -= spending_amount_to_transfer;
+        }
+    } else { // If there is not enough in the treasury to cover the budget amounts, distribute the treasury balance
+             // based on the budget percentage
+
+        check(false, "Config not set correctly for claim budgets. dac_id: %s", dac_id);
+        const auto prop_budget_percentage = globals.maybe_get_prop_budget_percentage();
+
+        if (!prop_budget_percentage.has_value()) {
+            return;
+        }
+        const auto prop_amount_to_transfer = running_treasury_balance * *prop_budget_percentage / 10000;
+        if (prop_amount_to_transfer.amount > 0) {
+            action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
+                make_tuple(treasury_account, prop_recipient_account, prop_amount_to_transfer, wp_memo))
+                .send();
+
+            running_treasury_balance -= prop_amount_to_transfer;
+        }
+
+        const asset spendings_for_period = running_treasury_balance - asset{1, symbol{"TLM", 4}};
+
+        // Ensure we don't attempt to transfer more than the treasury balance and
+        // leave 0.0001 TLM in the treasury to avoid deleting the balance row.
+        if (spendings_recipient_account && spendings_for_period.amount > 1) {
+            check(spendings_for_period <= running_treasury_balance,
+                "ERR::CLAIMBUDGET_SPENDINGS_AMOUNT_TOO_HIGH::Spendings amount is greater than the treasury balance. spendings_for_period: %s, Treasury balance: %s",
+                spendings_for_period, running_treasury_balance);
+            action(permission_level{treasury_account, "xfer"_n}, TLM_TOKEN_CONTRACT, "transfer"_n,
+                make_tuple(treasury_account, *spendings_recipient_account, spendings_for_period, spendings_memo))
+                .send();
+
+            running_treasury_balance -= spendings_for_period;
         }
     }
     globals.set_lastclaimbudgettime(time_point_sec(current_time_point()));
@@ -361,8 +383,8 @@ ACTION daccustodian::runnewperiod(const string &message, const name &dac_id) {
         assertPendingPeriodTime(globals);
 
         // Distribute Pay is called before   is called to ensure custodians are paid for the just
-        // passed period. This also implies custodians should not be paid the first time this is called. Distribute pay
-        // to the current custodians.
+        // passed period. This also implies custodians should not be paid the first time this is called. Distribute
+        // pay to the current custodians.
         distributeMeanPay(dac_id);
 
         // Set custodians for the next period.
@@ -372,23 +394,5 @@ ACTION daccustodian::runnewperiod(const string &message, const name &dac_id) {
         setMsigAuths(dac_id);
 
         globals.set_lastperiodtime(current_block_time().to_time_point());
-    }
-}
-
-uint16_t daccustodian::get_budget_percentage(const name &dac_id, const dacglobals &globals) {
-    const auto percentage = globals.maybe_get_budget_percentage();
-    if (percentage) {
-        return *percentage;
-    } else {
-        const auto nftcache = dacdir::nftcache_table{DACDIRECTORY_CONTRACT, dac_id.value};
-        const auto index    = nftcache.get_index<"valdesc"_n>();
-
-        const auto index_key = dacdir::nftcache::template_and_value_key_ascending(BUDGET_SCHEMA, 0);
-        const auto itr       = index.lower_bound(index_key);
-        if (itr == index.end() || itr->schema_name != BUDGET_SCHEMA) {
-            return 0; // Return 0 if no budget NFTs are present
-        }
-
-        return itr->value;
     }
 }
