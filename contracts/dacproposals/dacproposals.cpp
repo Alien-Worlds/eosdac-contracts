@@ -22,8 +22,7 @@ namespace eosdac {
         auto arb_white_list = arbiterwhitelist_table(get_self(), dac_id.value);
         auto arb_itr =
             arb_white_list.require_find(arbiter.value, "ERR::ARBITER_NOT_FOUND::Arbiter not found in whitelist");
-        // check(arb_itr->rating > SOME_FUTURE_RATING, "ERR::ARBITER_NOT_ACTIVE::Arbiter is not rated enough to be
-        // active.");
+        check(arb_itr->rating > 0, "ERR::ARBITER_NOT_ACTIVE::Arbiter is not rated enough to be active.");
 
         require_auth(proposer);
         assertValidMember(proposer, dac_id);
