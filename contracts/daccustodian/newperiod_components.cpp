@@ -269,7 +269,6 @@ ACTION daccustodian::claimbudget(const name &dac_id) {
     } else { // If there is not enough in the treasury to cover the budget amounts, distribute the treasury balance
              // based on the budget percentage
 
-        check(false, "Config not set correctly for claim budgets. dac_id: %s", dac_id);
         const auto prop_budget_percentage = globals.maybe_get_prop_budget_percentage();
 
         if (!prop_budget_percentage.has_value()) {
