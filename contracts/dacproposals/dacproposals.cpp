@@ -438,8 +438,9 @@ namespace eosdac {
 
     ACTION dacproposals::updateconfig(config new_config, name dac_id) {
 
-        auto auth_account = dacdir::dac_for_id(dac_id).owner;
-        require_auth(auth_account);
+        // auto auth_account = dacdir::dac_for_id(dac_id).owner;
+        // require_auth(auth_account);
+        require_auth(get_self());
         auto current_configs = configs{get_self(), dac_id};
         current_configs.set_proposal_threshold(new_config.proposal_threshold);
         current_configs.set_finalize_threshold(new_config.finalize_threshold);

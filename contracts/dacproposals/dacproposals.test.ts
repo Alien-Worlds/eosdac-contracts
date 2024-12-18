@@ -187,7 +187,7 @@ describe('Dacproposals', () => {
             min_proposal_duration: 0,
           },
           dacId,
-          { from: shared.auth_account }
+          { from: shared.dacproposals_contract.account }
         );
       });
       it('should have correct config in config table', async () => {
@@ -1543,7 +1543,7 @@ describe('Dacproposals', () => {
             min_proposal_duration: 0,
           },
           dacId,
-          { from: shared.auth_account }
+          { from: shared.dacproposals_contract.account }
         );
         await shared.dacproposals_contract.createprop(
           proposer1Account.name,
@@ -2045,7 +2045,7 @@ describe('Dacproposals', () => {
             min_proposal_duration: 0,
           },
           dacId,
-          { from: shared.auth_account }
+          { from: shared.dacproposals_contract.account }
         );
         await shared.dacproposals_contract.createprop(
           proposer1Account.name,
@@ -2353,7 +2353,7 @@ describe('Dacproposals', () => {
             min_proposal_duration: 0,
           },
           dacId,
-          { from: shared.auth_account }
+          { from: shared.dacproposals_contract.account }
         );
         await shared.dacproposals_contract.createprop(
           proposer1Account.name,
@@ -2631,7 +2631,7 @@ describe('Dacproposals', () => {
           min_proposal_duration: 0,
         },
         dacId,
-        { from: shared.auth_account }
+        { from: shared.dacproposals_contract.account }
       );
       await shared.dacproposals_contract.createprop(
         proposer1Account.name,
@@ -2805,7 +2805,7 @@ describe('Dacproposals', () => {
           min_proposal_duration: 0,
         },
         dacId,
-        { from: shared.auth_account }
+        { from: shared.dacproposals_contract.account }
       );
       await shared.dacproposals_contract.createprop(
         proposer1Account.name,
@@ -2921,7 +2921,7 @@ describe('Dacproposals', () => {
               min_proposal_duration: 0,
             },
             dacId,
-            { from: shared.auth_account }
+            { from: shared.dacproposals_contract.account }
           );
           await shared.dacproposals_contract.createprop(
             proposer1Account.name,
