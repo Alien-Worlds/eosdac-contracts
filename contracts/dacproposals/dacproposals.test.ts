@@ -3478,4 +3478,11 @@ async function setup_permissions() {
     'notfyrmv',
     shared.dacproposals_contract.account
   );
+  await SharedTestObjects.add_custom_permission_and_link(
+    shared.dacproposals_contract.account,
+    'xfer',
+    shared.dacproposals_contract.account,
+    'transfer',
+    shared.eosio_token_contract.account
+  );
 }

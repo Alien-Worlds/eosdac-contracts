@@ -71,7 +71,7 @@ namespace eosdac {
             // transfer fee to dao account
             const auto   fee_receiver = dac.owner;
             const string fee_memo     = fmt("Fee for proposal id %s", id);
-            eosio::action(eosio::permission_level{get_self(), "active"_n}, fee_required.contract, "transfer"_n,
+            eosio::action(eosio::permission_level{get_self(), "xfer"_n}, fee_required.contract, "transfer"_n,
                 make_tuple(get_self(), fee_receiver, fee_required.quantity, fee_memo))
                 .send();
         }
