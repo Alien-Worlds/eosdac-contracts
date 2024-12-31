@@ -3481,8 +3481,14 @@ async function setup_permissions() {
   await SharedTestObjects.add_custom_permission_and_link(
     shared.dacproposals_contract.account,
     'xfer',
-    shared.dacproposals_contract.account,
+    shared.eosio_token_contract.account,
     'transfer',
-    shared.eosio_token_contract.account
+    shared.dacproposals_contract.account
+  );
+  await SharedTestObjects.linkauth(
+    shared.dacproposals_contract.account,
+    'xfer',
+    shared.dac_token_contract.account,
+    'transfer',
   );
 }
