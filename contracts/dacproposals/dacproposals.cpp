@@ -383,7 +383,7 @@ namespace eosdac {
         proposal_table  proposals(_self, dac_id.value);
         const proposal &prop = proposals.get(proposal_id.value, "ERR::PROPOSAL_NOT_FOUND::Proposal not found.");
         require_auth(prop.proposer);
-        check(prop.state == STATE_IN_PROGRESS || prop.state == STATE_PENDING_FINALIZE,
+        check(prop.state == STATE_IN_PROGRESS || prop.state == STATE_PENDING_FINALIZE || prop.state == STATE_HAS_ENOUGH_FIN_VOTES,
             "ERR::CANCELWIP_WRONG_STATE::Worker proposal is in the wrong state to be cancelled with cancelwip. Try cancelprop.");
 
         auto escrow = dacdir::dac_for_id(dac_id).account_for_type(dacdir::ESCROW);
@@ -512,9 +512,7 @@ namespace eosdac {
                                  ? ProposalStateHas_enough_finalize_votes
                                  : ProposalStatePending_finalize;
             break;
-        case ProposalStateExpired:
-        case ProposalStateInDispute:
-        case ProposalStateWork_in_progress:
+        default:
             check(false, "ERR::UPDPROPVOTES_WRONG_STATE::Cannot update votes for this proposal state");
         }
         if (prop.state != name{newPropState}) {
@@ -595,6 +593,16 @@ namespace eosdac {
 
     void dacproposals::notfyrmv(const proposal &prop, name dac_id) {
         require_auth(get_self());
+    }
+
+    ACTION dacproposals::blockprop(name proposal_id, name dac_id) {
+        require_auth(get_self());
+        proposal_table proposals(_self, dac_id.value);
+        auto           prop_to_block = proposals.find(proposal_id.value);
+        check(prop_to_block != proposals.end(), "ERR::PROPOSAL_NOT_FOUND::Proposal not found");
+        proposals.modify(prop_to_block, same_payer, [&](proposal &p) {
+            p.state = STATE_BLOCKED;
+        });
     }
 
     int16_t dacproposals::count_votes(proposal prop, VoteType vote_type, name dac_id) {
