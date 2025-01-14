@@ -31,6 +31,7 @@ namespace eosdac {
     static constexpr eosio::name STATE_EXPIRED{"expired"};
     static constexpr eosio::name STATE_DISPUTED{"indispute"};
     static constexpr eosio::name STATE_COMPLETED{"completed"};
+    static constexpr eosio::name STATE_BLOCKED{"blocked"};
 
     CONTRACT dacproposals : public contract {
         enum VoteTypePublic : uint64_t {
@@ -59,7 +60,8 @@ namespace eosdac {
             ProposalStateHas_enough_finalize_votes  = STATE_HAS_ENOUGH_FIN_VOTES.value,
             ProposalStateExpired                    = STATE_EXPIRED.value,
             ProposalStateInDispute                  = STATE_DISPUTED.value,
-            ProposalStateCompleted                  = STATE_COMPLETED.value
+            ProposalStateCompleted                  = STATE_COMPLETED.value,
+            ProposalStateBlocked                    = STATE_BLOCKED.value
         };
 
       public:
@@ -197,6 +199,7 @@ namespace eosdac {
         ACTION updrecwl(name cand, uint64_t rating, name dac_id);
         ACTION rmvrecwl(name cand, name dac_id);
         ACTION notfyrmv(const proposal &prop, name dac_id);
+        ACTION blockprop(name proposal_id, name dac_id);
 
         [[eosio::on_notify("*::transfer")]] void receive(name from, name to, asset quantity, string memo);
         ACTION                                   minduration(uint32_t new_min_proposal_duration, name dac_id);
