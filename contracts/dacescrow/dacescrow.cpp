@@ -140,7 +140,7 @@ namespace eosdac {
     }
 
     /*
-     * Allows the sender to withdraw the funds if the escrow has expired
+     * Allows the receiver to refund early to the sender or the sender to withdraw the funds if the escrow has expired
      */
     ACTION dacescrow::refund(name key, name dac_id) {
 
@@ -148,15 +148,17 @@ namespace eosdac {
         auto esc_itr = escrows.find(key.value);
         check(esc_itr != escrows.end(), "Could not find escrow with that index");
 
-        require_auth(esc_itr->sender);
+        if (!has_auth(esc_itr->receiver)) {
+            require_auth(esc_itr->sender);
+            
+            time_point_sec time_now = time_point_sec(eosio::current_time_point());
+            check(time_now >= esc_itr->expires, "Escrow has not expired");
+        }
 
         check(esc_itr->receiver_pay.quantity.amount > 0, "This has not been initialized with a transfer");
         check(!esc_itr->disputed,
             "ERR::ESCROW_DISPUTED::This escrow is locked and can only be approved/disapproved by the arbiter.");
 
-        time_point_sec time_now = time_point_sec(eosio::current_time_point());
-
-        check(time_now >= esc_itr->expires, "Escrow has not expired");
 
         eosio::action(eosio::permission_level{_self, "active"_n}, esc_itr->receiver_pay.contract, "transfer"_n,
             make_tuple(_self, esc_itr->sender, esc_itr->receiver_pay.quantity, esc_itr->memo))
