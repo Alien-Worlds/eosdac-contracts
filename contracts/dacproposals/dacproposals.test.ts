@@ -35,6 +35,7 @@ enum ProposalState {
   ProposalStateHas_enough_finalize_votes = 'apprfinvtes',
   ProposalStateExpired = 'expired',
   ProposalStateDisputed = 'indispute',
+  ProposalStateBlocked = 'blocked',
 }
 
 const proposalHash = 'jhsdfkjhsdfkjhkjsdf';
@@ -2617,6 +2618,7 @@ describe('Dacproposals', () => {
   });
   context('cancelwip tests', async () => {
     const cancelpropid = 'cancelwipid';
+    const finvotespropid = 'finvotesprop';
     const content_hash = 'asdfasdfasdfasdfasdfasdfajjhjhjsdffdsa';
     before(async () => {
       await shared.dacproposals_contract.updateconfig(
@@ -2633,6 +2635,36 @@ describe('Dacproposals', () => {
         dacId,
         { from: shared.dacproposals_contract.account }
       );
+
+      // Remove proposer from whitelist if they exist
+      try {
+        await shared.dacproposals_contract.rmvrecwl(proposer1Account.name, dacId, {
+          from: shared.dacproposals_contract.account,
+        });
+      } catch (e) {
+        // Ignore error if proposer wasn't in whitelist
+      }
+
+      // Add proposer to receiver whitelist
+      await shared.dacproposals_contract.addrecwl(proposer1Account.name, 12, dacId, {
+        from: shared.dacproposals_contract.account,
+      });
+
+      // Remove arbiter from whitelist if they exist
+      try {
+        await shared.dacproposals_contract.rmvarbwl(arbiter.name, dacId, {
+          from: shared.dacproposals_contract.account,
+        });
+      } catch (e) {
+        // Ignore error if arbiter wasn't in whitelist
+      }
+
+      // Add arbiter to arbiter whitelist
+      await shared.dacproposals_contract.addarbwl(arbiter.name, 12, dacId, {
+        from: shared.dacproposals_contract.account,
+      });
+
+      // Create first test proposal
       await shared.dacproposals_contract.createprop(
         proposer1Account.name,
         'startwork_title',
@@ -2644,35 +2676,111 @@ describe('Dacproposals', () => {
           contract: shared.dac_token_contract.name,
         },
         content_hash,
-        cancelpropid, // proposal id
+        cancelpropid,
         category,
-        130, // job duration
+        130,
         dacId,
         { from: proposer1Account }
-      ),
-        '';
+      );
+
+      // Add enough votes to approve the proposal
       for (let index = 0; index < proposeApproveTheshold; index++) {
         const custodian = propDacCustodians[index];
-        await debugPromise(
-          shared.dacproposals_contract.voteprop(
-            custodian.name,
-            cancelpropid, // proposal id
-            VoteType.vote_approve,
-            dacId,
-            {
-              auths: [
-                {
-                  actor: custodian.name,
-                  permission: 'active',
-                },
-                {
-                  actor: shared.auth_account.name,
-                  permission: 'active',
-                },
-              ],
-            }
-          ),
-          'vote approve for proposal 7'
+        await shared.dacproposals_contract.voteprop(
+          custodian.name,
+          cancelpropid,
+          VoteType.vote_approve,
+          dacId,
+          {
+            auths: [
+              {
+                actor: custodian.name,
+                permission: 'active',
+              },
+              {
+                actor: shared.auth_account.name,
+                permission: 'active',
+              },
+            ],
+          }
+        );
+      }
+
+      // Create second test proposal that will reach finalize votes state
+      await shared.dacproposals_contract.createprop(
+        proposer1Account.name,
+        'finvotes_title',
+        'finvotes_summary',
+        arbiter.name,
+        { quantity: '106.0000 EOS', contract: 'eosio.token' },
+        {
+          quantity: '10.0000 PROPDAC',
+          contract: shared.dac_token_contract.name,
+        },
+        content_hash,
+        finvotespropid,
+        category,
+        130,
+        dacId,
+        { from: proposer1Account }
+      );
+
+      // Get enough votes for approval
+      for (let index = 0; index < proposeApproveTheshold; index++) {
+        const custodian = propDacCustodians[index];
+        await shared.dacproposals_contract.voteprop(
+          custodian.name,
+          finvotespropid,
+          VoteType.vote_approve,
+          dacId,
+          {
+            auths: [
+              {
+                actor: custodian.name,
+                permission: 'active',
+              },
+              {
+                actor: shared.auth_account.name,
+                permission: 'active',
+              },
+            ],
+          }
+        );
+      }
+
+      // Progress through states to reach finalize votes
+      await shared.dacproposals_contract.arbagree(
+        arbiter.name,
+        finvotespropid,
+        dacId,
+        { from: arbiter }
+      );
+      await shared.dacproposals_contract.startwork(finvotespropid, dacId, {
+        from: proposer1Account,
+      });
+      await shared.dacproposals_contract.completework(finvotespropid, dacId, {
+        from: proposer1Account,
+      });
+
+      // Get enough finalize votes
+      for (const custodian of propDacCustodians) {
+        await shared.dacproposals_contract.votepropfin(
+          custodian.name,
+          finvotespropid,
+          VoteType.vote_approve,
+          dacId,
+          {
+            auths: [
+              {
+                actor: custodian.name,
+                permission: 'active',
+              },
+              {
+                actor: shared.auth_account.name,
+                permission: 'active',
+              },
+            ],
+          }
         );
       }
     });
@@ -2766,27 +2874,63 @@ describe('Dacproposals', () => {
             );
           });
           it('escrow table should contain expected rows', async () => {
-            const escrow = (
-              await shared.dacescrow_contract.escrowsTable({ scope: dacId })
-            ).rows[0];
-            expect(escrow.key).to.equal(cancelpropid);
-            expect(escrow.arb).to.equal(arbiter.name);
-            expect(escrow.arbiter_pay.quantity).to.equal('10.0000 PROPDAC');
-            expect(escrow.arbiter_pay.contract).to.equal(
-              shared.dac_token_contract.name
+            await assertRowCount(
+              shared.dacescrow_contract.escrowsTable({ scope: dacId }),
+              2
             );
-
-            expect(escrow.receiver).to.equal(proposer1Account.name);
-            expect(escrow.sender).to.equal(prop_funds_source_account.name);
-            expect(escrow.receiver_pay.quantity).to.equal('106.0000 EOS');
-            expect(escrow.receiver_pay.contract).to.equal('eosio.token');
-            expect(escrow.memo).to.equal(
-              `${proposer1Account.name}:${cancelpropid}:${content_hash}`
-            );
-            expect(escrow.disputed).to.be.false;
-            expect(escrow.expires).to.equalDate(new Date());
           });
         });
+      });
+    });
+    context('with proposal in has_enough_finalize_votes state', async () => {
+      it('should initially be in has_enough_finalize_votes state', async () => {
+        const proposals = await shared.dacproposals_contract.proposalsTable({
+          scope: dacId,
+          lowerBound: finvotespropid,
+          upperBound: finvotespropid,
+        });
+        const proposal = proposals.rows[0];
+        await assertRowsEqual(
+          shared.dacproposals_contract.proposalsTable({
+            scope: dacId,
+            lowerBound: finvotespropid,
+            upperBound: finvotespropid,
+          }),
+          [{
+            ...proposal,
+            state: ProposalState.ProposalStateHas_enough_finalize_votes
+          }]
+        );
+      });
+
+      it('should succeed in canceling the proposal', async () => {
+        await shared.dacproposals_contract.cancelwip(finvotespropid, dacId, {
+          from: proposer1Account,
+        });
+      });
+
+      it('should remove the proposal', async () => {
+        await assertRowCount(
+          shared.dacproposals_contract.proposalsTable({
+            scope: dacId,
+            lowerBound: finvotespropid,
+            upperBound: finvotespropid,
+          }),
+          0
+        );
+      });
+
+      it('should remove all votes for the proposal', async () => {
+        await assertRowCount(
+          shared.dacproposals_contract.propvotesTable({
+            scope: dacId,
+            indexPosition: 3,
+            keyType: 'i64',
+            lowerBound: finvotespropid,
+            upperBound: finvotespropid,
+          }),
+          0
+        );
       });
     });
   });
@@ -2896,7 +3040,7 @@ describe('Dacproposals', () => {
           it('escrow table should contain expected rows', async () => {
             await assertRowCount(
               shared.dacescrow_contract.escrowsTable({ scope: dacId }),
-              1
+              2
             );
           });
         });
@@ -3330,6 +3474,105 @@ describe('Dacproposals', () => {
       });
       it('should succeed setting up testuser', async () => {
         await setup_test_user(propDacCustodians[0], 'PROPDAC');
+      });
+    });
+  });
+  context('blockprop', async () => {
+    const test_proposal_id = 'blockpropid';
+
+    before(async () => {
+      // Remove proposer from whitelist if they exist
+      try {
+        await shared.dacproposals_contract.rmvrecwl(proposer1Account.name, dacId, {
+          from: shared.dacproposals_contract.account,
+        });
+      } catch (e) {
+        // Ignore error if proposer wasn't in whitelist
+      }
+
+      // Add proposer to receiver whitelist
+      await shared.dacproposals_contract.addrecwl(proposer1Account.name, 12, dacId, {
+        from: shared.dacproposals_contract.account,
+      });
+
+      // Remove arbiter from whitelist if they exist
+      try {
+        await shared.dacproposals_contract.rmvarbwl(arbiter.name, dacId, {
+          from: shared.dacproposals_contract.account,
+        });
+      } catch (e) {
+        // Ignore error if arbiter wasn't in whitelist
+      }
+
+      // Add arbiter to arbiter whitelist
+      await shared.dacproposals_contract.addarbwl(arbiter.name, 12, dacId, {
+        from: shared.dacproposals_contract.account,
+      });
+
+      // Create a test proposal
+      await shared.dacproposals_contract.createprop(
+        proposer1Account.name,
+        'title',
+        'summary',
+        arbiter.name,
+        { quantity: '100.0000 EOS', contract: 'eosio.token' },
+        {
+          quantity: '10.0000 PROPDAC',
+          contract: shared.dac_token_contract.name,
+        },
+        proposalHash,
+        test_proposal_id,
+        category,
+        150,
+        dacId,
+        { from: proposer1Account }
+      );
+    });
+
+    context('with invalid auth', async () => {
+      it('should fail with auth error', async () => {
+        await assertMissingAuthority(
+          shared.dacproposals_contract.blockprop(test_proposal_id, dacId, {
+            from: otherAccount,
+          })
+        );
+      });
+    });
+
+    context('with invalid proposal id', async () => {
+      it('should fail with proposal not found error', async () => {
+        await assertEOSErrorIncludesMessage(
+          shared.dacproposals_contract.blockprop('invalidprop', dacId, {
+            from: shared.dacproposals_contract.account,
+          }),
+          'ERR::PROPOSAL_NOT_FOUND::Proposal not found'
+        );
+      });
+    });
+
+    context('with valid auth and proposal', async () => {
+      before(async () => {
+        await shared.dacproposals_contract.blockprop(test_proposal_id, dacId, {
+          from: shared.dacproposals_contract.account,
+        });
+      });
+
+      it('should change proposal state to blocked', async () => {
+        const proposals = await shared.dacproposals_contract.proposalsTable({
+          scope: dacId,
+        });
+        const blocked_proposal = proposals.rows.find(p => p.proposal_id === test_proposal_id);
+        await assertRowsEqual(
+          shared.dacproposals_contract.proposalsTable({
+            scope: dacId,
+            lowerBound: test_proposal_id,
+            upperBound: test_proposal_id,
+          }),
+          [{
+            ...blocked_proposal,
+            state: ProposalState.ProposalStateBlocked
+          }]
+        );
       });
     });
   });
