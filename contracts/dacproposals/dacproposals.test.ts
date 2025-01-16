@@ -2874,10 +2874,29 @@ describe('Dacproposals', () => {
             );
           });
           it('escrow table should contain expected rows', async () => {
+            const escrow = (
+              await shared.dacescrow_contract.escrowsTable({ scope: dacId })
+            ).rows[0];
+            expect(escrow.key).to.equal(cancelpropid);
+            expect(escrow.arb).to.equal(arbiter.name);
+            expect(escrow.arbiter_pay.quantity).to.equal('10.0000 PROPDAC');
+            expect(escrow.arbiter_pay.contract).to.equal(
+              shared.dac_token_contract.name
+            );
+
+            expect(escrow.receiver).to.equal(proposer1Account.name);
+            expect(escrow.sender).to.equal(prop_funds_source_account.name);
+            expect(escrow.receiver_pay.quantity).to.equal('106.0000 EOS');
+            expect(escrow.receiver_pay.contract).to.equal('eosio.token');
+            expect(escrow.memo).to.equal(
+              `${proposer1Account.name}:${cancelpropid}:${content_hash}`
+            );
             await assertRowCount(
               shared.dacescrow_contract.escrowsTable({ scope: dacId }),
               2
             );
+            expect(escrow.disputed).to.be.false;
+            expect(escrow.expires).to.equalDate(new Date());
           });
         });
       });
