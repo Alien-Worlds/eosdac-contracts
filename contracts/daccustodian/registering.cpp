@@ -306,7 +306,7 @@ ACTION daccustodian::rmvwl(name cand, name dac_id) {
     auto        registered_candidates = candidates_table{_self, dac_id.value};
     const auto &reg_candidate         = registered_candidates.find(cand.value);
     check(reg_candidate == registered_candidates.end(),
-        "ERR::USER_REGISTERED_CANDIDATE::User is currently registered as a DAO candidate.");
+        "ERR::USER_REGISTERED_CANDIDATE::User is currently registered as a DAO candidate. User must be unregistered as a candidate first.");
 
     auto whitelist = whitelist_table(get_self(), dac_id.value);
     auto itrr      = whitelist.find(cand.value);

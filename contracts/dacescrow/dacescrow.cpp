@@ -163,6 +163,10 @@ namespace eosdac {
         eosio::action(eosio::permission_level{_self, "active"_n}, esc_itr->receiver_pay.contract, "transfer"_n,
             make_tuple(_self, esc_itr->sender, esc_itr->receiver_pay.quantity, esc_itr->memo))
             .send();
+            
+        eosio::action(eosio::permission_level{_self, "active"_n}, esc_itr->arbiter_pay.contract, "transfer"_n,
+                make_tuple(_self, esc_itr->sender, esc_itr->arbiter_pay.quantity, esc_itr->memo))
+                .send();
 
         escrows.erase(esc_itr);
     }
