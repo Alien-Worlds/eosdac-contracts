@@ -48,3 +48,4 @@ artifacts/compiled_contracts
 /debugging/tables_stakevote.json
 /debugging/tables_daccustodian.json
 .magic_key_value
+lib
