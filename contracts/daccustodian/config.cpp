@@ -83,40 +83,28 @@ ACTION daccustodian::setlockasset(const extended_asset &lockupasset, const name 
     globals.set_lockupasset(lockupasset);
 }
 
-ACTION daccustodian::setmaxvotes(const uint8_t &maxvotes, const name &dac_id) {
+ACTION daccustodian::setdaogov(
+    const uint8_t &maxvotes, const uint8_t &numelected, const uint8_t &auththreshold, const name &dac_id) {
 
     if (!has_auth(get_self())) {
         const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
         require_auth(dacForScope.owner);
-        check(false, "not active yet");
+        // check(false, "not active yet");
     }
 
     auto globals = dacglobals{get_self(), dac_id};
 
-    check(maxvotes > 0, "ERR::SETMAXVOTES_INVALID_VALUE::Max votes must be greater than zero.");
-
-    check(S{maxvotes}.to<double>() < S{globals.get_numelected()}.to<double>() / S{2.0},
+    check(S{maxvotes}.to<double>() < S{numelected}.to<double>() / S{2.0},
         "ERR::SETMAXVOTES_INVALID_VALUE::The number of max votes must be less than or equal to half the number of elected candidates.");
+    check(numelected <= 21, "ERR::SETNUMELECT_INVALID_VALUE::The number of elected candidates must be <= 21");
+    check(auththreshold < numelected,
+        "ERR::SETAUTHTHRESHOLD_INVALID_VALUE::The auth threshold can never be satisfied with a value greater than the number of elected custodians");
 
     globals.set_maxvotes(maxvotes);
-}
-
-ACTION daccustodian::setnumelect(const uint8_t &numelected, const name &dac_id) {
-
-    if (!has_auth(get_self())) {
-        const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
-        require_auth(dacForScope.owner);
-        check(false, "not active yet");
-    }
-
-    auto globals = dacglobals{get_self(), dac_id};
-
-    check(numelected <= 21, "ERR::SETNUMELECT_INVALID_VALUE::The number of elected candidates must be <= 21");
-    check(numelected > 0, "ERR::SETNUMELECT_INVALID_VALUE::Number of elected candidates must be greater than zero.");
-    check(numelected > 2 * globals.get_maxvotes(),
-        "ERR::SETNUMELECT_LESS_THAN_MAXVOTES::Number of elected candidates cannot be less than max votes.");
-
     globals.set_numelected(numelected);
+    globals.set_auth_threshold_high(auththreshold);
+    globals.set_auth_threshold_mid(auththreshold);
+    globals.set_auth_threshold_low(auththreshold);
 }
 
 ACTION daccustodian::setperiodlen(const uint32_t &periodlength, const name &dac_id) {
@@ -202,57 +190,6 @@ ACTION daccustodian::setvotequor(const uint32_t &vote_quorum_percent, const name
 
     auto globals = dacglobals{get_self(), dac_id};
     globals.set_vote_quorum_percent(vote_quorum_percent);
-}
-
-ACTION daccustodian::setauthhigh(const uint8_t &auth_threshold_high, const name &dac_id) {
-
-    if (!has_auth(get_self())) {
-        const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
-        require_auth(dacForScope.owner);
-        check(false, "not active yet");
-    }
-
-    auto globals = dacglobals{get_self(), dac_id};
-
-    check(auth_threshold_high > 0, "ERR::SETAUTHHIGH_INVALID_VALUE::High auth threshold must be greater than zero.");
-    check(auth_threshold_high < globals.get_numelected(),
-        "ERR::SETAUTHHIGH_INVALID_VALUE::The auth threshold can never be satisfied with a value greater than the number of elected custodians");
-
-    globals.set_auth_threshold_high(auth_threshold_high);
-}
-
-ACTION daccustodian::setauthmid(const uint8_t &auth_threshold_mid, const name &dac_id) {
-
-    if (!has_auth(get_self())) {
-        const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
-        require_auth(dacForScope.owner);
-        check(false, "not active yet");
-    }
-
-    auto globals = dacglobals{get_self(), dac_id};
-
-    check(auth_threshold_mid > 0, "ERR::SETAUTHMID_INVALID_VALUE::Mid auth threshold must be greater than zero.");
-    check(auth_threshold_mid <= globals.get_auth_threshold_high(),
-        "ERR::SETAUTHMID_INVALID_VALUE::The mid auth threshold cannot be greater than the high auth threshold.");
-
-    globals.set_auth_threshold_mid(auth_threshold_mid);
-}
-
-ACTION daccustodian::setauthlow(const uint8_t &auth_threshold_low, const name &dac_id) {
-
-    if (!has_auth(get_self())) {
-        const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
-        require_auth(dacForScope.owner);
-        check(false, "not active yet");
-    }
-
-    auto globals = dacglobals{get_self(), dac_id};
-
-    check(auth_threshold_low > 0, "ERR::SETAUTHLOW_INVALID_VALUE::Low auth threshold must be greater than zero.");
-    check(auth_threshold_low <= globals.get_auth_threshold_mid(),
-        "ERR::SETAUTHLOW_INVALID_VALUE::The low auth threshold cannot be greater than the mid auth threshold.");
-
-    globals.set_auth_threshold_low(auth_threshold_low);
 }
 
 ACTION daccustodian::setlockdelay(const uint32_t &lockup_release_time_delay, const name &dac_id) {

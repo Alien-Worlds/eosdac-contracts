@@ -373,16 +373,13 @@ namespace eosdac {
         ACTION paycpu(const name &dac_id);
         ACTION claimbudget(const name &dac_id);
         ACTION setlockasset(const eosio::extended_asset &lockupasset, const name &dac_id);
-        ACTION setmaxvotes(const uint8_t &maxvotes, const name &dac_id);
-        ACTION setnumelect(const uint8_t &numelected, const name &dac_id);
         ACTION setperiodlen(const uint32_t &periodlength, const name &dac_id);
         ACTION setpenddelay(const uint32_t &pending_period_delay, const name &dac_id);
         ACTION setpayvia(const bool &should_pay_via_service_provider, const name &dac_id);
         ACTION setinitvote(const uint32_t &initial_vote_quorum_percent, const name &dac_id);
         ACTION setvotequor(const uint32_t &vote_quorum_percent, const name &dac_id);
-        ACTION setauthhigh(const uint8_t &auth_threshold_high, const name &dac_id);
-        ACTION setauthmid(const uint8_t &auth_threshold_mid, const name &dac_id);
-        ACTION setauthlow(const uint8_t &auth_threshold_low, const name &dac_id);
+        ACTION setdaogov(
+            const uint8_t &maxvotes, const uint8_t &numelected, const uint8_t &auththreshold, const name &dac_id);
         ACTION setlockdelay(const uint32_t &lockup_release_time_delay, const name &dac_id);
         ACTION setpaymax(const eosio::extended_asset &requested_pay_max, const name &dac_id);
         ACTION settokensup(const uint64_t &token_supply_theshold, const name &dac_id);
