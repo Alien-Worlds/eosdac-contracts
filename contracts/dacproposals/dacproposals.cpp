@@ -7,6 +7,7 @@
 #include <eosio/transaction.hpp>
 #include <typeinfo>
 
+#include "../../contract-shared-headers/custodians_shared.hpp"
 #include "../../contract-shared-headers/dacdirectory_shared.hpp"
 #include "../../contract-shared-headers/eosdactokens_shared.hpp"
 
@@ -128,13 +129,17 @@ namespace eosdac {
         }
     }
 
+    bool dacproposals::is_current_custodian(name custodian, name dac_id) {
+        auto custodians = custodians_table("dao.worlds"_n, dac_id.value);
+        auto itr        = custodians.find(custodian.value);
+        return itr != custodians.end();
+    }
+
     void dacproposals::_voteprop(name custodian, name proposal_id, name vote, name dac_id) {
         require_auth(custodian);
 
-        auto auth_account = dacdir::dac_for_id(dac_id).owner;
-        require_auth(auth_account);
-
         assertValidMember(custodian, dac_id);
+        check(is_current_custodian(custodian, dac_id), "ERR::VOTEPROP_INVALID_CUSTODIAN::Not a current custodian.");
 
         auto proposals = proposal_table{_self, dac_id.value};
 
@@ -180,10 +185,10 @@ namespace eosdac {
 
     ACTION dacproposals::delegatevote(name custodian, name proposal_id, name delegatee_custodian, name dac_id) {
         require_auth(custodian);
-        auto auth_account = dacdir::dac_for_id(dac_id).owner;
-        require_auth(auth_account);
 
         assertValidMember(custodian, dac_id);
+        check(is_current_custodian(custodian, dac_id), "ERR::VOTEPROP_INVALID_CUSTODIAN::Not a current custodian.");
+
         check(custodian != delegatee_custodian, "ERR::DELEGATEVOTE_DELEGATE_SELF::Cannot delegate voting to yourself.");
 
         proposal_table proposals(_self, dac_id.value);
@@ -215,9 +220,10 @@ namespace eosdac {
 
     ACTION dacproposals::delegatecat(name custodian, uint64_t category, name delegatee_custodian, name dac_id) {
         require_auth(custodian);
-        auto auth_account = dacdir::dac_for_id(dac_id).owner;
-        require_auth(auth_account);
+
         assertValidMember(custodian, dac_id);
+        check(is_current_custodian(custodian, dac_id), "ERR::VOTEPROP_INVALID_CUSTODIAN::Not a current custodian.");
+
         check(custodian != delegatee_custodian, "ERR::DELEGATEVOTE_DELEGATE_SELF::Cannot delegate voting to yourself.");
 
         proposal_vote_table prop_votes(_self, dac_id.value);
@@ -254,10 +260,20 @@ namespace eosdac {
 
     ACTION dacproposals::arbdeny(name arbiter, name proposal_id, name dac_id) {
         arbiter_rule_on_proposal(arbiter, proposal_id, dac_id);
+        auto escrow = dacdir::dac_for_id(dac_id).account_for_type(dacdir::ESCROW);
+        eosio::action(eosio::permission_level{escrow, "approve"_n}, escrow,
+            "disapprove"_n, // TODO: Add approve permission to escrw.worlds
+            make_tuple(proposal_id.value, arbiter, dac_id))
+            .send();
     }
 
     ACTION dacproposals::arbapprove(name arbiter, name proposal_id, name dac_id) {
         arbiter_rule_on_proposal(arbiter, proposal_id, dac_id);
+        auto escrow =
+            dacdir::dac_for_id(dac_id).account_for_type(dacdir::ESCROW); // TODO: Add approve permission to escrw.worlds
+        eosio::action(eosio::permission_level{escrow, "approve"_n}, escrow, "approve"_n,
+            make_tuple(proposal_id.value, arbiter, dac_id))
+            .send();
     }
 
     ACTION dacproposals::arbagree(name arbiter, name proposal_id, name dac_id) {
@@ -383,7 +399,8 @@ namespace eosdac {
         proposal_table  proposals(_self, dac_id.value);
         const proposal &prop = proposals.get(proposal_id.value, "ERR::PROPOSAL_NOT_FOUND::Proposal not found.");
         require_auth(prop.proposer);
-        check(prop.state == STATE_IN_PROGRESS || prop.state == STATE_PENDING_FINALIZE || prop.state == STATE_HAS_ENOUGH_FIN_VOTES,
+        check(prop.state == STATE_IN_PROGRESS || prop.state == STATE_PENDING_FINALIZE ||
+                  prop.state == STATE_HAS_ENOUGH_FIN_VOTES,
             "ERR::CANCELWIP_WRONG_STATE::Worker proposal is in the wrong state to be cancelled with cancelwip. Try cancelprop.");
 
         auto escrow = dacdir::dac_for_id(dac_id).account_for_type(dacdir::ESCROW);
@@ -392,6 +409,10 @@ namespace eosdac {
         auto          esc_itr = escrows.find(proposal_id.value);
         check(esc_itr != escrows.end(),
             "ERR::ESCROW_ACTIVE::There should be an escrow for a proposal for this action. Call cancelprop instead.");
+
+        eosio::action(eosio::permission_level{escrow, "approve"_n}, escrow, "refund"_n,
+            make_tuple(proposal_id.value, dac_id)) // TODO: Add refund permission to escrw.worlds
+            .send();
 
         assertValidMember(prop.proposer, dac_id);
         clearprop(prop, dac_id);
@@ -405,8 +426,10 @@ namespace eosdac {
         auto          esc_itr = escrows.find(proposal_id.value);
         check(esc_itr != escrows.end(),
             "ERR::ESCROW_ACTIVE::There should be an escrow for a proposal for this action. Call cancelprop instead.");
-        check(esc_itr->disputed,
-            "ERR::ESCROW_NOT_LOCKED::The escrow should be locked before disputing - best done within the same transaction.");
+
+        eosio::action(
+            eosio::permission_level{escrow, "approve"_n}, escrow, "dispute"_n, make_tuple(proposal_id.value, dac_id))
+            .send();
 
         proposal_table proposals(_self, dac_id.value);
 
@@ -414,7 +437,7 @@ namespace eosdac {
 
         require_auth(prop.proposer);
         assertValidMember(prop.proposer, dac_id);
-        check(prop.state == STATE_PENDING_FINALIZE,
+        check(prop.state == STATE_PENDING_FINALIZE || prop.state == STATE_HAS_ENOUGH_FIN_VOTES,
             "ERR::DISPUTE_WRONG_STATE::Worker proposal can only be disputed from Pending_finalize state");
 
         proposals.modify(prop, prop.proposer, [&](proposal &p) {
