@@ -76,7 +76,9 @@ namespace eosdac {
     }
 
     ACTION dacescrow::approve(name key, name approver, name dac_id) {
-        require_auth(approver);
+        if (!has_auth(get_self())) {
+            require_auth(approver);
+        }
 
         auto escrows = escrows_table(get_self(), dac_id.value);
         auto esc_itr = escrows.find(key.value);
@@ -103,7 +105,9 @@ namespace eosdac {
     }
 
     ACTION dacescrow::disapprove(name key, name disapprover, name dac_id) {
-        require_auth(disapprover);
+        if (!has_auth(get_self())) {
+            require_auth(disapprover);
+        }
 
         auto escrows = escrows_table(get_self(), dac_id.value);
         auto esc_itr = escrows.find(key.value);
@@ -148,9 +152,9 @@ namespace eosdac {
         auto esc_itr = escrows.find(key.value);
         check(esc_itr != escrows.end(), "Could not find escrow with that index");
 
-        if (!has_auth(esc_itr->receiver)) {
+        if (!has_auth(esc_itr->receiver) && !has_auth(get_self())) {
             require_auth(esc_itr->sender);
-            
+
             time_point_sec time_now = time_point_sec(eosio::current_time_point());
             check(time_now >= esc_itr->expires, "Escrow has not expired");
         }
@@ -158,7 +162,6 @@ namespace eosdac {
         check(esc_itr->receiver_pay.quantity.amount > 0, "This has not been initialized with a transfer");
         check(!esc_itr->disputed,
             "ERR::ESCROW_DISPUTED::This escrow is locked and can only be approved/disapproved by the arbiter.");
-
 
         eosio::action(eosio::permission_level{_self, "active"_n}, esc_itr->receiver_pay.contract, "transfer"_n,
             make_tuple(_self, esc_itr->sender, esc_itr->receiver_pay.quantity, esc_itr->memo))
@@ -173,23 +176,15 @@ namespace eosdac {
         auto esc_itr = escrows.find(key.value);
         check(esc_itr != escrows.end(), "Could not find escrow with that index");
 
-        require_auth(esc_itr->receiver);
+        if (!has_auth(get_self())) {
+            require_auth(esc_itr->receiver);
+        }
 
         check(esc_itr->receiver_pay.quantity.amount > 0, "This has not been initialized with a transfer");
 
         escrows.modify(esc_itr, same_payer, [&](escrow_info &e) {
             e.disputed = true;
         });
-    }
-
-    ACTION dacescrow::clean(name dac_id) {
-        require_auth(_self);
-
-        auto escrows = escrows_table(get_self(), dac_id.value);
-        auto itr     = escrows.begin();
-        while (itr != escrows.end()) {
-            itr = escrows.erase(itr);
-        }
     }
 
     void dacescrow::pay_arbiter(const escrows_table::const_iterator esc_itr) {
