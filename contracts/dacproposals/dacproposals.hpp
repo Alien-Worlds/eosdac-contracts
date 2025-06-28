@@ -211,6 +211,7 @@ namespace eosdac {
         int16_t count_votes(proposal prop, VoteType vote_type, name dac_id);
         void    arbiter_rule_on_proposal(name arbiter, name proposal_id, name dac_id);
         void    _voteprop(name custodian, name proposal_id, name vote, name dac_id);
+        bool    is_current_custodian(name custodian, name dac_id);
 
         TABLE proposalvote {
             uint64_t           vote_id;

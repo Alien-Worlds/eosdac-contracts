@@ -80,13 +80,6 @@ namespace eosdac {
          * @param dac_id The dac_id for the scope where the escrow is stored
          */
         ACTION cancel(name key, name dac_id);
-        /**
-         * @brief This action is intended to clean out all records in the escrow contract. It should only be used for
-         * development purposes and should not be used in production. It requires the `self` permission ofthe contract.
-         *
-         * @param dac_id The dac_id for the scope where the escrow is stored
-         */
-        ACTION clean(name dac_id);
 
       private:
         void pay_arbiter(const escrows_table::const_iterator esc_itr);
