@@ -7,7 +7,7 @@
 #include <eosio/transaction.hpp>
 #include <typeinfo>
 
-#include "../../contract-shared-headers/custodians_shared.hpp"
+#include "../../contract-shared-headers/daccustodian_shared.hpp"
 #include "../../contract-shared-headers/dacdirectory_shared.hpp"
 #include "../../contract-shared-headers/eosdactokens_shared.hpp"
 
