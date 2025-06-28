@@ -759,14 +759,6 @@ namespace eosdac {
         const proposal &prop = proposals.get(proposal_id.value, "ERR::PROPOSAL_NOT_FOUND::Proposal not found.");
         check(prop.arbiter == arbiter, "ERR::NOT_arbiter::You are not the arbiter for this proposal");
 
-        auto escrow = dacdir::dac_for_id(dac_id).account_for_type(dacdir::ESCROW);
-        check(is_account(escrow), "ERR::ESCROW_ACCOUNT_NOT_FOUND::Escrow account not found");
-
-        escrows_table escrows = escrows_table(escrow, dac_id.value);
-        auto          esc_itr = escrows.find(proposal_id.value);
-        check(esc_itr == escrows.end(),
-            "ERR::ESCROW_STILL_ACTIVE::Escrow is still active in escrow contract. It should have been either approved or dissapproved before calling this action.");
-
         check(prop.state == STATE_DISPUTED,
             "ERR::PROP_NOT_IN_DISPUTE_STATE::A proposal can only be denied by an arbiter when in dispute state.");
 
