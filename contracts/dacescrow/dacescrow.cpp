@@ -76,6 +76,8 @@ namespace eosdac {
     }
 
     ACTION dacescrow::approve(name key, name approver, name dac_id) {
+        // Allow contract self-authorization for inter-contract calls,
+        // otherwise require normal user authorization
         if (!has_auth(get_self())) {
             require_auth(approver);
         }
@@ -105,6 +107,8 @@ namespace eosdac {
     }
 
     ACTION dacescrow::disapprove(name key, name disapprover, name dac_id) {
+        // Allow contract self-authorization for inter-contract calls,
+        // otherwise require normal user authorization
         if (!has_auth(get_self())) {
             require_auth(disapprover);
         }
@@ -152,6 +156,8 @@ namespace eosdac {
         auto esc_itr = escrows.find(key.value);
         check(esc_itr != escrows.end(), "Could not find escrow with that index");
 
+        // Allow contract self-authorization, receiver authorization,
+        // or sender authorization (with expiry check)
         if (!has_auth(esc_itr->receiver) && !has_auth(get_self())) {
             require_auth(esc_itr->sender);
 
@@ -171,11 +177,12 @@ namespace eosdac {
     }
 
     ACTION dacescrow::dispute(name key, name dac_id) {
-
         auto escrows = escrows_table(get_self(), dac_id.value);
         auto esc_itr = escrows.find(key.value);
         check(esc_itr != escrows.end(), "Could not find escrow with that index");
 
+        // Allow contract self-authorization for inter-contract calls,
+        // otherwise require receiver authorization
         if (!has_auth(get_self())) {
             require_auth(esc_itr->receiver);
         }

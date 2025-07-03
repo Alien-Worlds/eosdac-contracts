@@ -996,41 +996,24 @@ describe('Daccustodian', () => {
     });
     context('After voting', async () => {
       it('only candidates with votes have total_vote_power values 1', async () => {
-        // console.log('ohai vote_and_check 1');
         await vote_and_check(dacId, regMembers[0], cands[0]);
-        // console.log('ohai vote_and_check 2');
         await vote_and_check(dacId, regMembers[0], cands[0]);
-        // console.log('ohai vote_and_check 3');
         await vote_and_check(dacId, regMembers[1], cands[0]);
         await vote_and_check(dacId, regMembers[0], []);
 
-        // console.log('ohai vote_and_check 4');
         await vote_and_check(dacId, regMembers[0], cands[0]);
-        // console.log('ohai vote_and_check 5');
         await vote_and_check(dacId, regMembers[0], cands.slice(1, 3));
-        // console.log('ohai vote_and_check 6');
         await vote_and_check(dacId, regMembers[1], cands.slice(1, 3));
-        // console.log('ohai vote_and_check 7');
         await vote_and_check(dacId, regMembers[2], cands.slice(1, 3));
-        // console.log('ohai vote_and_check 8');
         await vote_and_check(dacId, regMembers[2], []);
-        // console.log('ohai vote_and_check 9');
         await vote_and_check(dacId, regMembers[0], cands.slice(2, 4));
-        // console.log('ohai vote_and_check 10');
         await vote_and_check(dacId, regMembers[0], []);
-        // console.log('ohai vote_and_check 11');
         await vote_and_check(dacId, regMembers[2], cands.slice(1, 3));
-        // console.log('ohai vote_and_check 12');
         await vote_and_check(dacId, regMembers[2], cands.slice(1, 3));
-        // console.log('ohai vote_and_check 13');
         await vote_and_check(dacId, regMembers[0], cands.slice(1, 3));
-        // console.log('ohai vote_and_check 14');
         await vote_and_check(dacId, regMembers[2], cands.slice(1, 2));
-        // console.log('ohai vote_and_check 15');
         await vote_and_check(dacId, regMembers[1], cands.slice(2, 3));
-        // console.log('ohai vote_and_check 16');
         await vote_and_check(dacId, regMembers[1], []);
-        // console.log('ohai vote_and_check 17');
       });
     });
   });
@@ -3586,10 +3569,8 @@ describe('Daccustodian', () => {
       let prop_funds_balance_before;
       let prop_funds_account;
       before(async () => {
-        console.log('Ohai 1');
         prop_funds_account = await AccountManager.createAccount('propfunds');
         await shared.initDac(dacId, '4,PROPDAX', '1000000.0000 PROPDAX');
-        console.log('Ohai 2');
         await shared.updateconfig(dacId, '12.0000 PROPDAX');
         await shared.dac_token_contract.stakeconfig(
           { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
@@ -3627,17 +3608,13 @@ describe('Daccustodian', () => {
             ],
           }
         );
-        console.log('Ohai 3');
 
         regMembers = await shared.getRegMembers(dacId, '20000.0000 PROPDAX');
-        console.log('Ohai 4');
         candidates = await shared.getStakeObservedCandidates(
           dacId,
           '12.0000 PROPDAX'
         );
-        console.log('Ohai 5');
         await shared.voteForCustodians(regMembers, candidates, dacId);
-        console.log('Ohai 6');
 
         await shared.daccustodian_contract.newperiod(
           'initial new period',
@@ -3646,9 +3623,7 @@ describe('Daccustodian', () => {
             from: regMembers[0],
           }
         );
-        console.log('Ohai 7');
         await sleep(4000);
-        console.log('Ohai 8');
         await shared.daccustodian_contract.newperiod(
           'second new period',
           dacId,
@@ -3656,10 +3631,8 @@ describe('Daccustodian', () => {
             from: regMembers[0],
           }
         );
-        console.log('Ohai 9');
 
         await shared.daccustodian_contract.setprpbudget(dacId, 235); // 2.35%
-        console.log('Ohai 10');
       });
 
       it('should transfer the correct amounts', async () => {
@@ -3670,9 +3643,7 @@ describe('Daccustodian', () => {
     context('claimbudget when prop budget fixed amount is set', async () => {
       const dacId = 'propday';
       before(async () => {
-        console.log('Ohai 1');
         await shared.initDac(dacId, '4,PROPDAY', '1000000.0000 PROPDAY');
-        console.log('Ohai 2');
         await shared.updateconfig(dacId, '12.0000 PROPDAY');
         await shared.dac_token_contract.stakeconfig(
           { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
@@ -3724,17 +3695,13 @@ describe('Daccustodian', () => {
             ],
           }
         );
-        console.log('Ohai 3');
 
         regMembers = await shared.getRegMembers(dacId, '20000.0000 PROPDAY');
-        console.log('Ohai 4');
         candidates = await shared.getStakeObservedCandidates(
           dacId,
           '12.0000 PROPDAY'
         );
-        console.log('Ohai 5');
         await shared.voteForCustodians(regMembers, candidates, dacId);
-        console.log('Ohai 6');
 
         await shared.daccustodian_contract.newperiod(
           'initial new period',
@@ -3743,9 +3710,7 @@ describe('Daccustodian', () => {
             from: regMembers[0],
           }
         );
-        console.log('Ohai 7');
         await sleep(4000);
-        console.log('Ohai 8');
         await shared.daccustodian_contract.newperiod(
           'second new period',
           dacId,
@@ -3753,7 +3718,6 @@ describe('Daccustodian', () => {
             from: regMembers[0],
           }
         );
-        console.log('Ohai 9');
 
         // transfer some TLM into the treasury account
         await shared.eosio_token_contract.transfer(
@@ -3766,7 +3730,6 @@ describe('Daccustodian', () => {
 
         await shared.daccustodian_contract.setprpbudga(dacId, '123.0000 TLM');
         await shared.daccustodian_contract.setspendbudg(dacId, '142.0000 TLM');
-        console.log('Ohai 10');
       });
 
       it('should transfer the correct amounts', async () => {
@@ -4339,9 +4302,7 @@ async function vote_and_check(dacId, voter, candidates) {
   let expected_avg_cand = {};
   for (const candidate of candidates) {
     let x = await get_expected_avg_vote_time_stamp(dacId, voter, candidate);
-    // console.log(
-    //   `OHAI candidate ${candidate.name} expected avg_vote_time_stamp ${x}`
-    // );
+
     chai.expect(x).to.not.be.undefined;
     expected_avg_cand[candidate.name] = x;
   }
