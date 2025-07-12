@@ -27,33 +27,31 @@ void daccustodian::updateVoteWeight(
          * Anything below ‑4 is considered a real logic error or malicious input
          * and will trigger `ERR:INVALID_VOTE_POWER`.
          */
-        if (new_vote_power < int64_t{}) {
+        if (new_vote_power <= int64_t{}) {
             // Allow small tolerance but clamp at zero
             ::check(new_vote_power > int64_t{-5}, "ERR:INVALID_VOTE_POWER::new_vote_power is %s", new_vote_power);
             c.total_vote_power = 0;
             // When vote power is clamped to zero, discard the historical accumulator to avoid unsigned underflow
             c.running_weight_time = 0;
+
+            // Vote power is zero, so average vote-time is zero as well
+            c.avg_vote_time_stamp = time_point_sec{0};
         } else {
             c.total_vote_power = new_vote_power.to<uint64_t>();
 
             // Safe to update running_weight_time – result cannot underflow because new_vote_power >= 0
             c.running_weight_time = S<uint128_t>{c.running_weight_time}.add_signed_to_unsigned(
                 S{weight}.to<int128_t>() * S{vote_time_stamp.sec_since_epoch()}.to<int128_t>());
+
+            // Re-compute average vote-time directly (running_weight_time / total_vote_power)
+            const auto delta      = S{c.running_weight_time} / S<uint64_t>{c.total_vote_power}.to<uint128_t>();
+            c.avg_vote_time_stamp = time_point_sec{delta.template to<uint32_t>()};
         }
-        c.avg_vote_time_stamp = calc_avg_vote_time(c);
 
         check(c.avg_vote_time_stamp <= now(), "avg_vote_time_stamp pushed into the future: %s", c.avg_vote_time_stamp);
 
         c.update_index();
     });
-}
-
-time_point_sec daccustodian::calc_avg_vote_time(const candidate &cand) {
-    if (cand.total_vote_power == 0) {
-        return time_point_sec(0);
-    }
-    const auto delta = S{cand.running_weight_time} / S{cand.total_vote_power}.to<uint128_t>();
-    return time_point_sec{delta.to<uint32_t>()};
 }
 
 void daccustodian::updateVoteWeights(const vector<name> &votes, const time_point_sec vote_time_stamp,

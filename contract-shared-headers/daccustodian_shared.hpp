@@ -476,7 +476,6 @@ namespace eosdac {
         void             validateUnstake(name code, name cand, name dac_id);
         void validateUnstakeAmount(const name &code, const name &cand, const asset &unstake_amount, const name &dac_id);
         void validateMinStake(name account, name dac_id);
-        time_point_sec calc_avg_vote_time(const candidate &cand);
         void update_number_of_votes(const vector<name> &oldvotes, const vector<name> &newvotes, const name &dac_id);
 
         bool maintenance_mode() {
