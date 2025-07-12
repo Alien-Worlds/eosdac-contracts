@@ -465,7 +465,6 @@ namespace eosdac {
         void transferCustodianBudget(const dacdir::dac &dac);
         void removeCustodian(name cust, name internal_dac_id);
         void disableCandidate(name cust, name internal_dac_id);
-        void removeCandidate(name cust, name internal_dac_id);
         void prepareCustodians(name internal_dac_id);
         bool periodIsPending(name internal_dac_id);
         void allocateCustodians(name internal_dac_id);
