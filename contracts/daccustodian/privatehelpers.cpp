@@ -20,11 +20,13 @@ void daccustodian::updateVoteWeight(
         auto err = Err("daccustodian::updateVoteWeight c.total_vote_power: %s weight: %s", c.total_vote_power, weight);
 
         const auto new_vote_power = S<uint64_t>{c.total_vote_power}.to<int64_t>() + S{weight};
-        // Small negative deltas (1-4 tokens) may arise from integer rounding or asynchronous
-        // stake/weight updates that race each other.  We tolerate that drift by allowing the
-        // new vote power to dip as low as ‑4 and clamping it to zero instead of rejecting
-        // the transaction.  Anything below ‑4 is considered a real logic error or malicious
-        // input and will trigger `ERR:INVALID_VOTE_POWER`.
+        /*
+         * Small negative deltas (1-4 tokens) may arise from integer rounding.
+         * We tolerate that drift by allowing the new vote power to dip as low as ‑4
+         * and clamping it to zero instead of rejecting the transaction.
+         * Anything below ‑4 is considered a real logic error or malicious input
+         * and will trigger `ERR:INVALID_VOTE_POWER`.
+         */
         if (new_vote_power < int64_t{}) {
             // Allow small tolerance but clamp at zero
             ::check(new_vote_power > int64_t{-5}, "ERR:INVALID_VOTE_POWER::new_vote_power is %s", new_vote_power);
