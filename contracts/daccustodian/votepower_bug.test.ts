@@ -68,7 +68,7 @@ describe('VotePowerBugFix', () => {
     // 2. Candidate re-nominates (row recreated with zero vote power)
     await shared.daccustodian_contract.nominatecane(
       candidate.name,
-      '0.0000 EOS',
+      '0.0001 EOS',
       dacId,
       { from: candidate }
     );

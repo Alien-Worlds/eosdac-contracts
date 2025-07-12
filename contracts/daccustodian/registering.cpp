@@ -57,10 +57,11 @@ ACTION daccustodian::withdrawcane(const name &cand, const name &dac_id) {
     disableCandidate(cand, dac_id);
 }
 
-// if candidates wants to remove themselves. Candidate must be disabled before calling this.
+// No longer necessary, can be removed in the future. Kept for now for backwards compatibility.
 ACTION daccustodian::removecand(const name &cand, const name &dac_id) {
     require_auth(cand);
-    removeCandidate(cand, dac_id);
+    // Do *not* erase the candidate row anymore; just mark it inactive.
+    disableCandidate(cand, dac_id);
 }
 
 // if dac owner wants to forcibly remove a candidate
@@ -68,8 +69,8 @@ ACTION daccustodian::firecand(const name &cand, const bool lockupStake, const na
     auto dac = dacdir::dac_for_id(dac_id);
     require_auth(dac.owner);
     check(false, "This feature is currently disabled.");
+    // If re-enabled in the future, only mark candidate inactive.
     disableCandidate(cand, dac_id);
-    removeCandidate(cand, dac_id);
 }
 
 ACTION daccustodian::resigncust(const name &cust, const name &dac_id) {
@@ -82,7 +83,8 @@ ACTION daccustodian::firecust(const name &cust, const name &dac_id) {
     require_auth(dac.owner);
     check(false, "This feature is currently disabled.");
     removeCustodian(cust, dac_id);
-    removeCandidate(cust, dac_id);
+    // Only deactivate candidate; do not erase row.
+    disableCandidate(cust, dac_id);
 }
 
 ACTION daccustodian::setperm(const name &cand, const name &permission, const name &dac_id) {
@@ -213,23 +215,6 @@ void daccustodian::disableCandidate(name cand, name dac_id) {
     registered_candidates.modify(reg_candidate, same_payer, [&](auto &c) {
         c.is_active = 0;
     });
-}
-
-// erases a candidate
-void daccustodian::removeCandidate(name cand, name dac_id) {
-    auto        registered_candidates = candidates_table{_self, dac_id.value};
-    const auto &reg_candidate         = registered_candidates.get(
-        cand.value, "ERR::REMOVECANDIDATE_NOT_CURRENT_CANDIDATE::Candidate is not already registered.");
-    check(!reg_candidate.is_active, "ERR::REMOVECANDIDATE_CANDIDATE_IS_ACTIVE::Candidate is still active.");
-
-    // remove entry for candperms
-    auto cand_perms = candperms_table{_self, dac_id.value};
-    auto perm       = cand_perms.find(cand.value);
-    if (perm != cand_perms.end()) {
-        cand_perms.erase(perm);
-    }
-
-    registered_candidates.erase(reg_candidate);
 }
 
 ACTION daccustodian::regproxy(const name &proxy_member, const name &dac_id) {
