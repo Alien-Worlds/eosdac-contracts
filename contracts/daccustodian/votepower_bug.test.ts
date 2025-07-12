@@ -17,7 +17,7 @@ import * as chai from 'chai';
         ERR:INVALID_VOTE_POWER.
 */
 
-describe('VotePowerBugFix', () => {
+describe('Daccustodian VotePowerBugFix', () => {
   const dacId = 'bugdac';
   let shared: SharedTestObjects;
   let voter: Account;
