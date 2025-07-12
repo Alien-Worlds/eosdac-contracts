@@ -20,14 +20,24 @@ void daccustodian::updateVoteWeight(
         auto err = Err("daccustodian::updateVoteWeight c.total_vote_power: %s weight: %s", c.total_vote_power, weight);
 
         const auto new_vote_power = S<uint64_t>{c.total_vote_power}.to<int64_t>() + S{weight};
+        // Small negative deltas (1-4 tokens) may arise from integer rounding or asynchronous
+        // stake/weight updates that race each other.  We tolerate that drift by allowing the
+        // new vote power to dip as low as ‑4 and clamping it to zero instead of rejecting
+        // the transaction.  Anything below ‑4 is considered a real logic error or malicious
+        // input and will trigger `ERR:INVALID_VOTE_POWER`.
         if (new_vote_power < int64_t{}) {
+            // Allow small tolerance but clamp at zero
             ::check(new_vote_power > int64_t{-5}, "ERR:INVALID_VOTE_POWER::new_vote_power is %s", new_vote_power);
             c.total_vote_power = 0;
+            // When vote power is clamped to zero, discard the historical accumulator to avoid unsigned underflow
+            c.running_weight_time = 0;
         } else {
             c.total_vote_power = new_vote_power.to<uint64_t>();
+
+            // Safe to update running_weight_time – result cannot underflow because new_vote_power >= 0
+            c.running_weight_time = S<uint128_t>{c.running_weight_time}.add_signed_to_unsigned(
+                S{weight}.to<int128_t>() * S{vote_time_stamp.sec_since_epoch()}.to<int128_t>());
         }
-        c.running_weight_time = S<uint128_t>{c.running_weight_time}.add_signed_to_unsigned(
-            S{weight}.to<int128_t>() * S{vote_time_stamp.sec_since_epoch()}.to<int128_t>());
         c.avg_vote_time_stamp = calc_avg_vote_time(c);
 
         check(c.avg_vote_time_stamp <= now(), "avg_vote_time_stamp pushed into the future: %s", c.avg_vote_time_stamp);
