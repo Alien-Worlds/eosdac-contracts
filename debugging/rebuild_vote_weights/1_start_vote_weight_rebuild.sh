@@ -13,6 +13,7 @@
 #   SRC_DIR            Contract source dir (default contracts/daccustodian)
 #   BUILD_DIR          Build artefacts dir   (default $SRC_DIR/build)
 #   BATCH_SIZE         Unused here but passed through for downstream scripts.
+#   API_URL            Node endpoint passed to cleos -u (optional)
 #
 set -euo pipefail
 
@@ -26,6 +27,12 @@ function require_cmd() {
 require_cmd cleos
 
 CONTRACT_ACCOUNT="${CONTRACT_ACCOUNT:-dao.worlds}"
+# Optional API endpoint for cleos
+API_URL="${API_URL:-}"
+API_OPT=""
+if [[ -n "$API_URL" ]]; then
+  API_OPT="-u $API_URL"
+fi
 echo "Contract account: $CONTRACT_ACCOUNT"
 BUILD_DIR="artifacts/compiled_contracts/DEBUG/daccustodian"
 
@@ -35,10 +42,10 @@ lamington build -DDEBUG -p daccustodian -f
 
 echo "[2/3] Deploying DEBUG build to ${CONTRACT_ACCOUNT}…"
 
-cleos set contract "$CONTRACT_ACCOUNT" "$BUILD_DIR" -p "${CONTRACT_ACCOUNT}@active"
+cleos $API_OPT set contract "$CONTRACT_ACCOUNT" "$BUILD_DIR" -p "${CONTRACT_ACCOUNT}@active"
 
 echo "[3/3] Entering maintenance mode…"
 
-cleos push action "$CONTRACT_ACCOUNT" maintenance '[1]' -p "${CONTRACT_ACCOUNT}@active"
+cleos $API_OPT push action "$CONTRACT_ACCOUNT" maintenance '[1]' -p "${CONTRACT_ACCOUNT}@active"
 
 echo "✅ Maintenance window opened with DEBUG build deployed. Now run 2_rebuild_vote_weights_for_dac.sh" 
