@@ -82,3 +82,34 @@ void daccustodian::maintenance(const bool maintenance) {
     auto globals = dacglobals{get_self(), get_self()};
     globals.set_maintenance_mode(maintenance);
 }
+
+// -------------------------------------------------------------------------------------------------
+//  DEBUG helpers for removing proxy-related data
+// -------------------------------------------------------------------------------------------------
+
+void daccustodian::clrprxvotes(const name &dac_id) {
+    // Only contract account itself can run destructive maintenance helpers.
+    require_auth(get_self());
+
+    check(maintenance_mode(), "ERR::NOT_MAINTENANCE_MODE::Must enable maintenance mode before running clrprxvotes");
+
+    votes_table votes_cast_by_members(_self, dac_id.value);
+
+    auto vote_itr = votes_cast_by_members.begin();
+    while (vote_itr != votes_cast_by_members.end()) {
+        vote_itr = votes_cast_by_members.erase(vote_itr);
+    }
+}
+
+void daccustodian::clrproxies(const name &dac_id) {
+    require_auth(get_self());
+
+    check(maintenance_mode(), "ERR::NOT_MAINTENANCE_MODE::Must enable maintenance mode before running clrproxies");
+
+    proxies_table proxies(_self, dac_id.value);
+
+    auto proxy_itr = proxies.begin();
+    while (proxy_itr != proxies.end()) {
+        proxy_itr = proxies.erase(proxy_itr);
+    }
+}
