@@ -401,6 +401,10 @@ namespace eosdac {
         ACTION resetstate(const name &dac_id);
         ACTION clearcands(const name &dac_id);
         ACTION clearcusts(const name &dac_id);
+        // Remove all votes that delegate to a proxy for the given DAC
+        ACTION clrprxvotes(const name &dac_id);
+        // Erase all registered proxy records for the given DAC
+        ACTION clrproxies(const name &dac_id);
         ACTION maintenance(const bool maintenance);
 #endif
 
