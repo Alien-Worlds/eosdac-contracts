@@ -1,7 +1,7 @@
 
 void daccustodian::resetvotes(const name &voter, const name &dac_id) {
     require_auth(get_self());
-
+    check(maintenance_mode(), "ERR::NOT_MAINTENANCE_MODE::Must enable maintenance mode before running resetvotes");
     votes_table votes_cast_by_members(_self, dac_id.value);
     auto        existingVote = votes_cast_by_members.find(voter.value);
 
@@ -10,6 +10,7 @@ void daccustodian::resetvotes(const name &voter, const name &dac_id) {
 
 void daccustodian::collectvotes(const name &dac_id, name from, name to) {
     require_auth(get_self());
+    check(maintenance_mode(), "ERR::NOT_MAINTENANCE_MODE::Must enable maintenance mode before running collectvotes");
 
     votes_table votes_cast_by_members(_self, dac_id.value);
     auto        vote_ittr = votes_cast_by_members.lower_bound(from.value);
@@ -25,6 +26,8 @@ void daccustodian::collectvotes(const name &dac_id, name from, name to) {
 
 void daccustodian::resetstate(const name &dac_id) {
     require_auth(get_self());
+    check(maintenance_mode(), "ERR::NOT_MAINTENANCE_MODE::Must enable maintenance mode before running resetstate");
+
     auto currentState = dacglobals{get_self(), dac_id};
 
     currentState.set_total_weight_of_votes(0);
@@ -35,7 +38,7 @@ void daccustodian::resetstate(const name &dac_id) {
 
 void daccustodian::resetcands(const name &dac_id) {
     require_auth(get_self());
-
+    check(maintenance_mode(), "ERR::NOT_MAINTENANCE_MODE::Must enable maintenance mode before running resetcands");
     candidates_table candidates(_self, dac_id.value);
     auto             cand = candidates.begin();
 
@@ -56,6 +59,7 @@ void daccustodian::resetcands(const name &dac_id) {
 void daccustodian::clearcands(const name &dac_id) {
     require_auth(get_self());
 
+    check(maintenance_mode(), "ERR::NOT_MAINTENANCE_MODE::Must enable maintenance mode before running clearcands");
     candidates_table candidates(_self, dac_id.value);
     auto             cand = candidates.begin();
 
@@ -66,6 +70,8 @@ void daccustodian::clearcands(const name &dac_id) {
 
 void daccustodian::clearcusts(const name &dac_id) {
     require_auth(get_self());
+
+    check(maintenance_mode(), "ERR::NOT_MAINTENANCE_MODE::Must enable maintenance mode before running clearcusts");
 
     custodians_table custodians(_self, dac_id.value);
 
@@ -97,7 +103,11 @@ void daccustodian::clrprxvotes(const name &dac_id) {
 
     auto vote_itr = votes_cast_by_members.begin();
     while (vote_itr != votes_cast_by_members.end()) {
-        vote_itr = votes_cast_by_members.erase(vote_itr);
+        if (vote_itr->proxy.value != 0) {
+            vote_itr = votes_cast_by_members.erase(vote_itr);
+        } else {
+            vote_itr++;
+        }
     }
 }
 
