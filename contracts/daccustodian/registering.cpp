@@ -218,9 +218,7 @@ void daccustodian::disableCandidate(name cand, name dac_id) {
 }
 
 ACTION daccustodian::regproxy(const name &proxy_member, const name &dac_id) {
-#ifndef IS_DEV
     check(false, "proxy voting not yet enabled.");
-#endif
     require_auth(proxy_member);
     assertValidMember(proxy_member, dac_id);
 
