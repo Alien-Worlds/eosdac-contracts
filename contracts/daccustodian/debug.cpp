@@ -15,13 +15,13 @@ void daccustodian::collectvotes(const name &dac_id, name from, name to) {
     votes_table votes_cast_by_members(_self, dac_id.value);
     auto        vote_ittr = votes_cast_by_members.lower_bound(from.value);
 
-    while (vote_ittr != votes_cast_by_members.end() && vote_ittr->voter != to) {
+    do {
         update_number_of_votes({}, vote_ittr->candidates, dac_id);
         const auto [vote_weight, vote_weight_quorum] = get_vote_weight(vote_ittr->voter, dac_id);
         modifyVoteWeights({vote_ittr->voter, vote_weight, vote_weight_quorum}, {}, {}, vote_ittr->candidates,
             vote_ittr->vote_time_stamp, dac_id, true);
         vote_ittr++;
-    }
+    } while (vote_ittr != votes_cast_by_members.end() && vote_ittr->voter != to);
 }
 
 void daccustodian::resetstate(const name &dac_id) {
