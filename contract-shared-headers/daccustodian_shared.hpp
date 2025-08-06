@@ -405,6 +405,8 @@ namespace eosdac {
         ACTION clrprxvotes(const name &dac_id);
         // Erase all registered proxy records for the given DAC
         ACTION clrproxies(const name &dac_id);
+        // Clean up orphaned votes - removes candidate references that no longer exist in candidates table
+        ACTION cleanorphans(const name &dac_id, name from, name to);
         ACTION maintenance(const bool maintenance);
 #endif
 

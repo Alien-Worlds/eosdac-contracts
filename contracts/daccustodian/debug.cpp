@@ -123,3 +123,52 @@ void daccustodian::clrproxies(const name &dac_id) {
         proxy_itr = proxies.erase(proxy_itr);
     }
 }
+
+void daccustodian::cleanorphans(const name &dac_id, name from, name to) {
+    require_auth(get_self());
+
+    check(maintenance_mode(), "ERR::NOT_MAINTENANCE_MODE::Must enable maintenance mode before running cleanorphans");
+
+    votes_table votes_cast_by_members(_self, dac_id.value);
+    candidates_table candidates(_self, dac_id.value);
+
+    // Build a set of existing candidate names for fast lookup
+    std::set<name> existing_candidates;
+    for (const auto& candidate : candidates) {
+        existing_candidates.insert(candidate.candidate_name);
+    }
+
+
+    auto vote_itr = votes_cast_by_members.lower_bound(from.value);
+
+    do {
+        std::vector<name> valid_candidates;
+        uint32_t orphaned_count = 0;
+
+        // Check each candidate in this vote
+        for (const auto& candidate_name : vote_itr->candidates) {
+            if (existing_candidates.find(candidate_name) != existing_candidates.end()) {
+                // Candidate exists, keep it
+                valid_candidates.push_back(candidate_name);
+            } else {
+                // Candidate is orphaned, count it
+                orphaned_count++;
+            }
+        }
+
+        if (valid_candidates.empty()) {
+            // All candidates were orphaned, remove the entire vote
+            vote_itr = votes_cast_by_members.erase(vote_itr);
+        } else if (orphaned_count > 0) {
+            // Some candidates were orphaned, update the vote with only valid candidates
+            votes_cast_by_members.modify(vote_itr, same_payer, [&](auto &v) {
+                v.candidates = valid_candidates;
+            });
+            vote_itr++;
+        } else {
+            // No orphaned candidates, move to next vote
+            vote_itr++;
+        }
+    } while (vote_itr != votes_cast_by_members.end() && vote_itr->voter != to);
+
+}
