@@ -89,14 +89,14 @@ ACTION daccustodian::setdaogov(
     if (!has_auth(get_self())) {
         const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
         require_auth(dacForScope.owner);
-        // check(false, "not active yet");
+        check(false, "not active yet");
     }
 
     auto globals = dacglobals{get_self(), dac_id};
 
     check(S{maxvotes}.to<double>() < S{numelected}.to<double>() / S{2.0},
         "ERR::SETMAXVOTES_INVALID_VALUE::The number of max votes must be less than or equal to half the number of elected candidates.");
-    check(numelected <= 21, "ERR::SETNUMELECT_INVALID_VALUE::The number of elected candidates must be <= 21");
+    check(numelected <= 12, "ERR::SETNUMELECT_INVALID_VALUE::The number of elected candidates must be <= 12");
     check(auththreshold < numelected,
         "ERR::SETAUTHTHRESHOLD_INVALID_VALUE::The auth threshold can never be satisfied with a value greater than the number of elected custodians");
 
@@ -120,8 +120,8 @@ ACTION daccustodian::setperiodlen(const uint32_t &periodlength, const name &dac_
     const auto days   = 24 * 60 * 60;
     const auto months = 30 * days;
 
-    check(periodlength <= 6 * months,
-        "ERR::SETPERIODLEN_INVALID_VALUE::The period length cannot be longer than 6 months.");
+    check(periodlength <= 1 * months,
+        "ERR::SETPERIODLEN_INVALID_VALUE::The period length cannot be longer than 1 months.");
     check(periodlength >= days, "ERR::SETPERIODLEN_INVALID_VALUE::Period length must be at least 1 day.");
     check(globals.get_pending_period_delay() <= periodlength,
         "ERR::SETPERIODLEN_INVALID_VALUE::The pending period length cannot be longer than the period length.");
