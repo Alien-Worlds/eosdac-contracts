@@ -174,7 +174,7 @@ describe('Stakevote', () => {
         );
       });
     });
-    context('staking and unstaking repeatedly', async () => {
+    context('staking and unstaking repeatedly 1', async () => {
       it('should work', async () => {
         await shared.dac_token_contract.transfer(
           shared.tokenIssuer.name,
@@ -445,7 +445,7 @@ describe('Stakevote', () => {
           chai.expect(parseInt(x, 10)).to.equal(expected);
         });
       });
-      context('staking and unstaking repeatedly', async () => {
+      context('staking and unstaking repeatedly 2', async () => {
         it('should work', async () => {
           await sleep(1000);
           await shared.dac_token_contract.transfer(
