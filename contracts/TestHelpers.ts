@@ -1029,13 +1029,12 @@ export class SharedTestObjects {
     if (contract == null) {
       contract = account;
     }
-    const auth_to_set = UpdateAuth.AuthorityToSet.forContractCode(contract);
     await UpdateAuth.execUpdateAuth(
       account.active,
       account.name,
       name,
       parent,
-      auth_to_set
+      UpdateAuth.AuthorityToSet.forContractCode(contract)
     );
   }
   static async linkauth(
