@@ -401,6 +401,12 @@ namespace eosdac {
         ACTION resetstate(const name &dac_id);
         ACTION clearcands(const name &dac_id);
         ACTION clearcusts(const name &dac_id);
+        // Remove all votes that delegate to a proxy for the given DAC
+        ACTION clrprxvotes(const name &dac_id);
+        // Erase all registered proxy records for the given DAC
+        ACTION clrproxies(const name &dac_id);
+        // Clean up orphaned votes - removes candidate references that no longer exist in candidates table
+        ACTION cleanorphans(const name &dac_id, name from, name to);
         ACTION maintenance(const bool maintenance);
 #endif
 
@@ -465,7 +471,6 @@ namespace eosdac {
         void transferCustodianBudget(const dacdir::dac &dac);
         void removeCustodian(name cust, name internal_dac_id);
         void disableCandidate(name cust, name internal_dac_id);
-        void removeCandidate(name cust, name internal_dac_id);
         void prepareCustodians(name internal_dac_id);
         bool periodIsPending(name internal_dac_id);
         void allocateCustodians(name internal_dac_id);
@@ -477,7 +482,6 @@ namespace eosdac {
         void             validateUnstake(name code, name cand, name dac_id);
         void validateUnstakeAmount(const name &code, const name &cand, const asset &unstake_amount, const name &dac_id);
         void validateMinStake(name account, name dac_id);
-        time_point_sec calc_avg_vote_time(const candidate &cand);
         void update_number_of_votes(const vector<name> &oldvotes, const vector<name> &newvotes, const name &dac_id);
 
         bool maintenance_mode() {
