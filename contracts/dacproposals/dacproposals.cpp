@@ -760,8 +760,19 @@ namespace eosdac {
         const proposal &prop = proposals.get(proposal_id.value, "ERR::PROPOSAL_NOT_FOUND::Proposal not found.");
         check(prop.arbiter == arbiter, "ERR::NOT_arbiter::You are not the arbiter for this proposal");
 
+        auto escrow = dacdir::dac_for_id(dac_id).account_for_type(dacdir::ESCROW);
+        check(is_account(escrow), "ERR::ESCROW_ACCOUNT_NOT_FOUND::Escrow account not found");
+
+        escrows_table escrows = escrows_table(escrow, dac_id.value);
+        auto          esc_itr = escrows.find(proposal_id.value);
+        // Proposal must be in dispute phase for arbiter to rule
         check(prop.state == STATE_DISPUTED,
             "ERR::PROP_NOT_IN_DISPUTE_STATE::A proposal can only be denied by an arbiter when in dispute state.");
+        // Escrow must exist and be locked (disputed) to allow arbiter ruling
+        check(esc_itr != escrows.end(),
+            "ERR::ESCROW_NOT_FOUND::There should be an escrow for a proposal for this action.");
+        check(esc_itr->disputed,
+            "ERR::ESCROW_IS_NOT_LOCKED::This escrow is not locked. It can only be approved/disapproved by the arbiter while it is locked.");
 
         proposals.modify(prop, prop.proposer, [&](proposal &p) {
             p.state = STATE_COMPLETED;

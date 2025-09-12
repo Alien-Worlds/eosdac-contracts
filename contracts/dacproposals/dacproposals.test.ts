@@ -2105,13 +2105,12 @@ describe('Dacproposals', () => {
       });
       context('Without escrow and proposal in dispute', async () => {
         before(async () => {
-          //First complete work on WP
+          // First complete work on WP but do not dispute yet
           await shared.dacproposals_contract.completework(arbApproveId, dacId, {
             from: proposer1Account,
           });
         });
         it('It should prevent arbapprove with wrong state error.', async () => {
-          // arbapprove now handles escrow internally and checks proposal state
           await assertEOSErrorIncludesMessage(
             shared.dacproposals_contract.arbapprove(
               arbiter.name,
@@ -2160,17 +2159,6 @@ describe('Dacproposals', () => {
       context('After the escrow and proposal have been disputed', async () => {
         before(async () => {
           // Dispute the proposal for not getting approved.
-          // const escrowAction: EosioAction = {
-          //   account: shared.dacescrow_contract.account.name,
-          //   name: 'dispute',
-          //   authorization: [
-          //     { actor: proposer1Account.name, permission: 'active' },
-          //   ],
-          //   data: {
-          //     key: arbApproveId,
-          //     dac_id: dacId,
-          //   },
-          // };
           const proposalAction: EosioAction = {
             account: shared.dacproposals_contract.account.name,
             name: 'dispute',
@@ -2193,16 +2181,6 @@ describe('Dacproposals', () => {
             }),
             [{ balance: '20010.0000 PROPDAC' }]
           );
-          // const escrowAction: EosioAction = {
-          //   account: shared.dacescrow_contract.account.name,
-          //   name: 'approve',
-          //   authorization: [{ actor: arbiter.name, permission: 'active' }],
-          //   data: {
-          //     key: arbApproveId,
-          //     approver: arbiter.name,
-          //     dac_id: dacId,
-          //   },
-          // };
           const proposalAction: EosioAction = {
             account: shared.dacproposals_contract.account.name,
             name: 'arbapprove',
@@ -2213,9 +2191,7 @@ describe('Dacproposals', () => {
               dac_id: dacId,
             },
           };
-          await EOSManager.transact({
-            actions: [proposalAction],
-          });
+          await EOSManager.transact({ actions: [proposalAction] });
         });
       });
       context('after arb approve is run', async () => {
@@ -2406,7 +2382,7 @@ describe('Dacproposals', () => {
               dacId,
               { from: arbiter }
             ),
-            'ERR::PROP_NOT_IN_DISPUTE_STATE'
+            'ERR::PROP_NOT_IN_DISPUTE_STATE::'
           );
         });
       });
@@ -2455,17 +2431,6 @@ describe('Dacproposals', () => {
         });
         before(async () => {
           // Dispute the proposal for not getting approved.
-          // const escrowAction: EosioAction = {
-          //   account: shared.dacescrow_contract.account.name,
-          //   name: 'dispute',
-          //   authorization: [
-          //     { actor: proposer1Account.name, permission: 'active' },
-          //   ],
-          //   data: {
-          //     key: arbDenyId,
-          //     dac_id: dacId,
-          //   },
-          // };
           const proposalAction: EosioAction = {
             account: shared.dacproposals_contract.account.name,
             name: 'dispute',
@@ -2482,16 +2447,6 @@ describe('Dacproposals', () => {
           });
         });
         it('It should succeed to allow arbdeny', async () => {
-          // const escrowAction: EosioAction = {
-          //   account: shared.dacescrow_contract.account.name,
-          //   name: 'disapprove',
-          //   authorization: [{ actor: arbiter.name, permission: 'active' }],
-          //   data: {
-          //     key: arbDenyId,
-          //     disapprover: arbiter.name,
-          //     dac_id: dacId,
-          //   },
-          // };
           const proposalAction: EosioAction = {
             account: shared.dacproposals_contract.account.name,
             name: 'arbdeny',
@@ -2502,9 +2457,7 @@ describe('Dacproposals', () => {
               dac_id: dacId,
             },
           };
-          await EOSManager.transact({
-            actions: [proposalAction],
-          });
+          await EOSManager.transact({ actions: [proposalAction] });
         });
         context('after arbdeny is run', async () => {
           it('proposer should have been paid', async () => {
