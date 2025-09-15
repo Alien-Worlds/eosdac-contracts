@@ -3603,6 +3603,81 @@ describe('Daccustodian', () => {
       });
     });
   });
+  context.skip('setdaogov', async () => {
+    const dacId = 'setdaogov';
+    before(async () => {
+      await shared.initDac(dacId, '4,GOVDAC', '1000000.0000 GOVDAC');
+      await shared.updateconfig(dacId, '12.0000 GOVDAC');
+      await shared.dac_token_contract.stakeconfig(
+        { enabled: true, min_stake_time: 1233, max_stake_time: 1500 },
+        '4,GOVDAC',
+        { from: shared.auth_account }
+      );
+    });
+    context('with wrong auth', async () => {
+      it('should fail auth error', async () => {
+        await assertMissingAuthority(
+          shared.daccustodian_contract.setdaogov(4, 5, 3, dacId, {
+            from: somebody,
+          })
+        );
+      });
+    });
+    context('with correct auth', async () => {
+      context('with maxvotes > numelected / 2', async () => {
+        it('should fail', async () => {
+          await assertEOSErrorIncludesMessage(
+            shared.daccustodian_contract.setdaogov(4, 5, 3, dacId, {
+              from: shared.auth_account,
+            }),
+            'ERR::SETMAXVOTES_INVALID_VALUE::'
+          );
+        });
+      });
+      context('with numelected > 21', async () => {
+        it('should fail', async () => {
+          await assertEOSErrorIncludesMessage(
+            shared.daccustodian_contract.setdaogov(4, 22, 3, dacId, {
+              from: shared.auth_account,
+            }),
+            'ERR::SETNUMELECT_INVALID_VALUE::'
+          );
+        });
+      });
+      context('with auth threshold > numelected', async () => {
+        it('should fail', async () => {
+          await assertEOSErrorIncludesMessage(
+            shared.daccustodian_contract.setdaogov(3, 7, 8, dacId, {
+              from: shared.auth_account,
+            }),
+            'ERR::SETAUTHTHRESHOLD_INVALID_VALUE::'
+          );
+        });
+      });
+      context('with valid values and auth', async () => {
+        it('should succeed', async () => {
+          await shared.daccustodian_contract.setdaogov(4, 9, 6, dacId, {
+            from: shared.auth_account,
+          });
+        });
+        it('should update the dacgobals table', async () => {
+          chai
+            .expect(await get_from_dacglobals(dacId, 'auth_threshold_high'))
+            .to.equal(6);
+          chai
+            .expect(await get_from_dacglobals(dacId, 'auth_threshold_mid'))
+            .to.equal(6);
+          chai
+            .expect(await get_from_dacglobals(dacId, 'auth_threshold_low'))
+            .to.equal(6);
+          chai
+            .expect(await get_from_dacglobals(dacId, 'numelected'))
+            .to.equal(9);
+          chai.expect(await get_from_dacglobals(dacId, 'maxvotes')).to.equal(4);
+        });
+      });
+    });
+  });
 });
 
 /* Use a fresh instance to prevent caching of results */
