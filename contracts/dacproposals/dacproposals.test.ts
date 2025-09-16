@@ -868,16 +868,7 @@ describe('Dacproposals', () => {
               VoteType.vote_approve,
               dacId,
               {
-                auths: [
-                  {
-                    actor: propDacCustodians[0].name,
-                    permission: 'active',
-                  },
-                  {
-                    actor: shared.auth_account.name,
-                    permission: 'active',
-                  },
-                ],
+                from: propDacCustodians[0],
               }
             );
           });
@@ -890,16 +881,7 @@ describe('Dacproposals', () => {
               VoteType.vote_deny,
               dacId,
               {
-                auths: [
-                  {
-                    actor: propDacCustodians[0].name,
-                    permission: 'active',
-                  },
-                  {
-                    actor: shared.auth_account.name,
-                    permission: 'active',
-                  },
-                ],
+                from: propDacCustodians[0],
               }
             );
           });
@@ -913,16 +895,7 @@ describe('Dacproposals', () => {
               VoteType.vote_approve,
               dacId,
               {
-                auths: [
-                  {
-                    actor: propDacCustodians[0].name,
-                    permission: 'active',
-                  },
-                  {
-                    actor: shared.auth_account.name,
-                    permission: 'active',
-                  },
-                ],
+                from: propDacCustodians[0],
               }
             );
           });
@@ -935,16 +908,7 @@ describe('Dacproposals', () => {
               VoteType.vote_approve,
               dacId,
               {
-                auths: [
-                  {
-                    actor: propDacCustodians[0].name,
-                    permission: 'active',
-                  },
-                  {
-                    actor: shared.auth_account.name,
-                    permission: 'active',
-                  },
-                ],
+                from: propDacCustodians[0],
               }
             );
           });
@@ -957,16 +921,7 @@ describe('Dacproposals', () => {
               VoteType.vote_deny,
               dacId,
               {
-                auths: [
-                  {
-                    actor: propDacCustodians[0].name,
-                    permission: 'active',
-                  },
-                  {
-                    actor: shared.auth_account.name,
-                    permission: 'active',
-                  },
-                ],
+                from: propDacCustodians[0],
               }
             );
           });
@@ -1249,51 +1204,52 @@ describe('Dacproposals', () => {
           );
         });
       });
-    });
-    context('with more denied than approved votes', async () => {
-      context('with insufficient votes', async () => {
-        before(async () => {
-          for (const custodian of propDacCustodians.slice(1)) {
-            await shared.dacproposals_contract.voteprop(
-              custodian.name,
-              newpropid,
-              VoteType.vote_deny,
-              dacId,
-              {
-                auths: [
-                  {
-                    actor: custodian.name,
-                    permission: 'active',
-                  },
-                  {
-                    actor: shared.auth_account.name,
-                    permission: 'active',
-                  },
-                ],
-              }
+      context('with more denied than approved votes', async () => {
+        context('with insufficient votes', async () => {
+          before(async () => {
+            // Get current custodians instead of using the initially set up ones
+            const currentCustodians =
+              await shared.daccustodian_contract.custodians1Table({
+                scope: dacId,
+              });
+
+            // Use current custodians except the first one for voting
+            for (let i = 1; i < currentCustodians.rows.length; i++) {
+              const custodianName = currentCustodians.rows[i].cust_name;
+              // Create Account object from the custodian name
+              const custodianAccount = new Account(custodianName);
+              await shared.dacproposals_contract.voteprop(
+                custodianName,
+                newpropid,
+                VoteType.vote_deny,
+                dacId,
+                {
+                  from: custodianAccount,
+                }
+              );
+            }
+          });
+          it('should fail with insuffient votes error', async () => {
+            await assertEOSErrorIncludesMessage(
+              shared.dacproposals_contract.startwork(
+                newpropid, // proposal id
+                dacId,
+                {
+                  auths: [
+                    {
+                      actor: proposer1Account.name,
+                      permission: 'active',
+                    },
+                    {
+                      actor: shared.auth_account.name,
+                      permission: 'active',
+                    },
+                  ],
+                }
+              ),
+              'ERR::STARTWORK_INSUFFICIENT_VOTES'
             );
-          }
-        });
-        it('should fail with insuffient votes error', async () => {
-          await assertEOSErrorIncludesMessage(
-            shared.dacproposals_contract.startwork(
-              newpropid, // proposal id
-              dacId,
-              {
-                auths: [
-                  {
-                    actor: proposer1Account.name,
-                    permission: 'active',
-                  },
-                  {
-                    actor: shared.auth_account.name,
-                    permission: 'active',
-                  },
-                ],
-              }
-            ),
-            'ERR::STARTWORK_INSUFFICIENT_VOTES'
-          );
+          });
         });
       });
     });
@@ -1307,16 +1263,7 @@ describe('Dacproposals', () => {
             VoteType.vote_approve,
             dacId,
             {
-              auths: [
-                {
-                  actor: custodian.name,
-                  permission: 'active',
-                },
-                {
-                  actor: shared.auth_account.name,
-                  permission: 'active',
-                },
-              ],
+              from: custodian,
             }
           );
         }
@@ -1572,16 +1519,7 @@ describe('Dacproposals', () => {
           VoteType.vote_deny,
           dacId,
           {
-            auths: [
-              {
-                actor: propDacCustodians[0].name,
-                permission: 'active',
-              },
-              {
-                actor: shared.auth_account.name,
-                permission: 'active',
-              },
-            ],
+            from: propDacCustodians[0],
           }
         );
       });
@@ -1710,13 +1648,7 @@ describe('Dacproposals', () => {
               VoteType.vote_approve,
               dacId,
               {
-                auths: [
-                  { actor: propDacCustodians[0].name, permission: 'active' },
-                  {
-                    actor: shared.auth_account.name,
-                    permission: 'active',
-                  },
-                ],
+                from: propDacCustodians[0],
               }
             ),
             'VOTEPROP_INVALID_PROPOSAL_STATE'
@@ -1732,13 +1664,7 @@ describe('Dacproposals', () => {
               VoteType.vote_deny,
               dacId,
               {
-                auths: [
-                  { actor: propDacCustodians[0].name, permission: 'active' },
-                  {
-                    actor: shared.auth_account.name,
-                    permission: 'active',
-                  },
-                ],
+                from: propDacCustodians[0],
               }
             ),
             'VOTEPROP_INVALID_PROPOSAL_STATE'
@@ -1762,7 +1688,7 @@ describe('Dacproposals', () => {
       it('should fail with auth error', async () => {
         await assertMissingAuthority(
           shared.dacproposals_contract.completework(newpropid, dacId, {
-            auths: [{ actor: propDacCustodians[1].name, permission: 'active' }],
+            from: propDacCustodians[1],
           })
         );
       });
@@ -1916,23 +1842,21 @@ describe('Dacproposals', () => {
                 from: shared.dacproposals_contract.account,
               });
 
-              for (const custodian of propDacCustodians) {
+              // Get current custodians instead of using the initially set up ones
+              const currentCustodians =
+                await shared.daccustodian_contract.custodians1Table({
+                  scope: dacId,
+                });
+
+              for (const custodianRow of currentCustodians.rows) {
+                const custodianAccount = new Account(custodianRow.cust_name);
                 await shared.dacproposals_contract.votepropfin(
-                  custodian.name,
+                  custodianRow.cust_name,
                   newpropid,
                   VoteType.vote_approve,
                   dacId,
                   {
-                    auths: [
-                      {
-                        actor: custodian.name,
-                        permission: 'active',
-                      },
-                      {
-                        actor: shared.auth_account.name,
-                        permission: 'active',
-                      },
-                    ],
+                    from: custodianAccount,
                   }
                 );
               }
@@ -2067,17 +1991,29 @@ describe('Dacproposals', () => {
         ),
           '';
 
-        for (let index = 0; index < proposeApproveTheshold; index++) {
-          const custodian = propDacCustodians[index];
+        // Get current custodians instead of using the initially set up ones
+        const currentCustodians =
+          await shared.daccustodian_contract.custodians1Table({
+            scope: dacId,
+          });
+
+        for (
+          let index = 0;
+          index <
+          Math.min(proposeApproveTheshold, currentCustodians.rows.length);
+          index++
+        ) {
+          const custodianName = currentCustodians.rows[index].cust_name;
+          const custodianAccount = new Account(custodianName);
           await shared.dacproposals_contract.voteprop(
-            custodian.name,
+            custodianName,
             arbApproveId,
             VoteType.vote_approve,
             dacId,
             {
               auths: [
                 {
-                  actor: custodian.name,
+                  actor: custodianName,
                   permission: 'active',
                 },
                 {
@@ -2155,7 +2091,7 @@ describe('Dacproposals', () => {
         });
       });
       context('With a currently active escrow', async () => {
-        it('It should fail with escrow still active error', async () => {
+        it('It should fail with proposal not in dispute state error', async () => {
           await assertEOSErrorIncludesMessage(
             shared.dacproposals_contract.arbapprove(
               arbiter.name,
@@ -2163,41 +2099,26 @@ describe('Dacproposals', () => {
               dacId,
               { from: arbiter }
             ),
-            'ERR::ESCROW_STILL_ACTIVE'
+            'ERR::PROP_NOT_IN_DISPUTE_STATE'
           );
         });
       });
       context('Without escrow and proposal in dispute', async () => {
         before(async () => {
-          //First complete work on WP
+          // First complete work on WP but do not dispute yet
           await shared.dacproposals_contract.completework(arbApproveId, dacId, {
             from: proposer1Account,
           });
         });
         it('It should prevent arbapprove with wrong state error.', async () => {
-          const escrowAction: EosioAction = {
-            account: shared.dacescrow_contract.account.name,
-            name: 'approve',
-            authorization: [{ actor: arbiter.name, permission: 'active' }],
-            data: {
-              key: arbApproveId,
-              approver: arbiter.name,
-              dac_id: dacId,
-            },
-          };
-          const proposalAction: EosioAction = {
-            account: shared.dacproposals_contract.account.name,
-            name: 'arbapprove',
-            authorization: [{ actor: arbiter.name, permission: 'active' }],
-            data: {
-              arbiter: arbiter.name,
-              proposal_id: arbApproveId,
-              dac_id: dacId,
-            },
-          };
           await assertEOSErrorIncludesMessage(
-            EOSManager.transact({ actions: [escrowAction, proposalAction] }),
-            'ERR::ESCROW_IS_NOT_LOCKED'
+            shared.dacproposals_contract.arbapprove(
+              arbiter.name,
+              arbApproveId,
+              dacId,
+              { from: arbiter }
+            ),
+            'ERR::PROP_NOT_IN_DISPUTE_STATE'
           );
         });
       });
@@ -2238,17 +2159,6 @@ describe('Dacproposals', () => {
       context('After the escrow and proposal have been disputed', async () => {
         before(async () => {
           // Dispute the proposal for not getting approved.
-          const escrowAction: EosioAction = {
-            account: shared.dacescrow_contract.account.name,
-            name: 'dispute',
-            authorization: [
-              { actor: proposer1Account.name, permission: 'active' },
-            ],
-            data: {
-              key: arbApproveId,
-              dac_id: dacId,
-            },
-          };
           const proposalAction: EosioAction = {
             account: shared.dacproposals_contract.account.name,
             name: 'dispute',
@@ -2261,7 +2171,7 @@ describe('Dacproposals', () => {
             },
           };
           await EOSManager.transact({
-            actions: [escrowAction, proposalAction],
+            actions: [proposalAction],
           });
         });
         it('It should succeed to allow arbapprove', async () => {
@@ -2271,16 +2181,6 @@ describe('Dacproposals', () => {
             }),
             [{ balance: '20010.0000 PROPDAC' }]
           );
-          const escrowAction: EosioAction = {
-            account: shared.dacescrow_contract.account.name,
-            name: 'approve',
-            authorization: [{ actor: arbiter.name, permission: 'active' }],
-            data: {
-              key: arbApproveId,
-              approver: arbiter.name,
-              dac_id: dacId,
-            },
-          };
           const proposalAction: EosioAction = {
             account: shared.dacproposals_contract.account.name,
             name: 'arbapprove',
@@ -2291,9 +2191,7 @@ describe('Dacproposals', () => {
               dac_id: dacId,
             },
           };
-          await EOSManager.transact({
-            actions: [escrowAction, proposalAction],
-          });
+          await EOSManager.transact({ actions: [proposalAction] });
         });
       });
       context('after arb approve is run', async () => {
@@ -2375,17 +2273,29 @@ describe('Dacproposals', () => {
         ),
           '';
 
-        for (let index = 0; index < proposeApproveTheshold; index++) {
-          const custodian = propDacCustodians[index];
+        // Get current custodians instead of using the initially set up ones
+        const currentCustodians =
+          await shared.daccustodian_contract.custodians1Table({
+            scope: dacId,
+          });
+
+        for (
+          let index = 0;
+          index <
+          Math.min(proposeApproveTheshold, currentCustodians.rows.length);
+          index++
+        ) {
+          const custodianName = currentCustodians.rows[index].cust_name;
+          const custodianAccount = new Account(custodianName);
           await shared.dacproposals_contract.voteprop(
-            custodian.name,
+            custodianName,
             arbDenyId,
             VoteType.vote_approve,
             dacId,
             {
               auths: [
                 {
-                  actor: custodian.name,
+                  actor: custodianName,
                   permission: 'active',
                 },
                 {
@@ -2444,7 +2354,7 @@ describe('Dacproposals', () => {
         });
       });
       context('With a currently active escrow', async () => {
-        it('It should fail with escrow still active error', async () => {
+        it('It should fail with proposal not in dispute state error', async () => {
           await assertEOSErrorIncludesMessage(
             shared.dacproposals_contract.arbdeny(
               arbiter.name,
@@ -2452,7 +2362,7 @@ describe('Dacproposals', () => {
               dacId,
               { from: arbiter }
             ),
-            'ERR::ESCROW_STILL_ACTIVE'
+            'ERR::PROP_NOT_IN_DISPUTE_STATE'
           );
         });
       });
@@ -2464,29 +2374,15 @@ describe('Dacproposals', () => {
           });
         });
         it('It should prevent arbdeny with wrong state error.', async () => {
-          const escrowAction: EosioAction = {
-            account: shared.dacescrow_contract.account.name,
-            name: 'disapprove',
-            authorization: [{ actor: arbiter.name, permission: 'active' }],
-            data: {
-              key: arbDenyId,
-              disapprover: arbiter.name,
-              dac_id: dacId,
-            },
-          };
-          const proposalAction: EosioAction = {
-            account: shared.dacproposals_contract.account.name,
-            name: 'arbdeny',
-            authorization: [{ actor: arbiter.name, permission: 'active' }],
-            data: {
-              arbiter: arbiter.name,
-              proposal_id: arbDenyId,
-              dac_id: dacId,
-            },
-          };
+          // arbdeny now handles escrow internally and checks proposal state
           await assertEOSErrorIncludesMessage(
-            EOSManager.transact({ actions: [escrowAction, proposalAction] }),
-            'ERR::ESCROW_IS_NOT_LOCKED'
+            shared.dacproposals_contract.arbdeny(
+              arbiter.name,
+              arbDenyId,
+              dacId,
+              { from: arbiter }
+            ),
+            'ERR::PROP_NOT_IN_DISPUTE_STATE::'
           );
         });
       });
@@ -2535,17 +2431,6 @@ describe('Dacproposals', () => {
         });
         before(async () => {
           // Dispute the proposal for not getting approved.
-          const escrowAction: EosioAction = {
-            account: shared.dacescrow_contract.account.name,
-            name: 'dispute',
-            authorization: [
-              { actor: proposer1Account.name, permission: 'active' },
-            ],
-            data: {
-              key: arbDenyId,
-              dac_id: dacId,
-            },
-          };
           const proposalAction: EosioAction = {
             account: shared.dacproposals_contract.account.name,
             name: 'dispute',
@@ -2558,20 +2443,10 @@ describe('Dacproposals', () => {
             },
           };
           await EOSManager.transact({
-            actions: [escrowAction, proposalAction],
+            actions: [proposalAction],
           });
         });
         it('It should succeed to allow arbdeny', async () => {
-          const escrowAction: EosioAction = {
-            account: shared.dacescrow_contract.account.name,
-            name: 'disapprove',
-            authorization: [{ actor: arbiter.name, permission: 'active' }],
-            data: {
-              key: arbDenyId,
-              disapprover: arbiter.name,
-              dac_id: dacId,
-            },
-          };
           const proposalAction: EosioAction = {
             account: shared.dacproposals_contract.account.name,
             name: 'arbdeny',
@@ -2582,9 +2457,7 @@ describe('Dacproposals', () => {
               dac_id: dacId,
             },
           };
-          await EOSManager.transact({
-            actions: [escrowAction, proposalAction],
-          });
+          await EOSManager.transact({ actions: [proposalAction] });
         });
         context('after arbdeny is run', async () => {
           it('proposer should have been paid', async () => {
@@ -2638,17 +2511,26 @@ describe('Dacproposals', () => {
 
       // Remove proposer from whitelist if they exist
       try {
-        await shared.dacproposals_contract.rmvrecwl(proposer1Account.name, dacId, {
-          from: shared.dacproposals_contract.account,
-        });
+        await shared.dacproposals_contract.rmvrecwl(
+          proposer1Account.name,
+          dacId,
+          {
+            from: shared.dacproposals_contract.account,
+          }
+        );
       } catch (e) {
         // Ignore error if proposer wasn't in whitelist
       }
 
       // Add proposer to receiver whitelist
-      await shared.dacproposals_contract.addrecwl(proposer1Account.name, 12, dacId, {
-        from: shared.dacproposals_contract.account,
-      });
+      await shared.dacproposals_contract.addrecwl(
+        proposer1Account.name,
+        12,
+        dacId,
+        {
+          from: shared.dacproposals_contract.account,
+        }
+      );
 
       // Remove arbiter from whitelist if they exist
       try {
@@ -2684,17 +2566,29 @@ describe('Dacproposals', () => {
       );
 
       // Add enough votes to approve the proposal
-      for (let index = 0; index < proposeApproveTheshold; index++) {
-        const custodian = propDacCustodians[index];
+      // Get current custodians instead of using the initially set up ones
+      const currentCustodians1 =
+        await shared.daccustodian_contract.custodians1Table({
+          scope: dacId,
+        });
+
+      for (
+        let index = 0;
+        index <
+        Math.min(proposeApproveTheshold, currentCustodians1.rows.length);
+        index++
+      ) {
+        const custodianName = currentCustodians1.rows[index].cust_name;
+        const custodianAccount = new Account(custodianName);
         await shared.dacproposals_contract.voteprop(
-          custodian.name,
+          custodianName,
           cancelpropid,
           VoteType.vote_approve,
           dacId,
           {
             auths: [
               {
-                actor: custodian.name,
+                actor: custodianName,
                 permission: 'active',
               },
               {
@@ -2726,17 +2620,29 @@ describe('Dacproposals', () => {
       );
 
       // Get enough votes for approval
-      for (let index = 0; index < proposeApproveTheshold; index++) {
-        const custodian = propDacCustodians[index];
+      // Get current custodians instead of using the initially set up ones
+      const currentCustodians2 =
+        await shared.daccustodian_contract.custodians1Table({
+          scope: dacId,
+        });
+
+      for (
+        let index = 0;
+        index <
+        Math.min(proposeApproveTheshold, currentCustodians2.rows.length);
+        index++
+      ) {
+        const custodianName = currentCustodians2.rows[index].cust_name;
+        const custodianAccount = new Account(custodianName);
         await shared.dacproposals_contract.voteprop(
-          custodian.name,
+          custodianName,
           finvotespropid,
           VoteType.vote_approve,
           dacId,
           {
             auths: [
               {
-                actor: custodian.name,
+                actor: custodianName,
                 permission: 'active',
               },
               {
@@ -2763,16 +2669,23 @@ describe('Dacproposals', () => {
       });
 
       // Get enough finalize votes
-      for (const custodian of propDacCustodians) {
+      // Get current custodians instead of using the initially set up ones
+      const currentCustodians3 =
+        await shared.daccustodian_contract.custodians1Table({
+          scope: dacId,
+        });
+
+      for (const custodianRow of currentCustodians3.rows) {
+        const custodianAccount = new Account(custodianRow.cust_name);
         await shared.dacproposals_contract.votepropfin(
-          custodian.name,
+          custodianRow.cust_name,
           finvotespropid,
           VoteType.vote_approve,
           dacId,
           {
             auths: [
               {
-                actor: custodian.name,
+                actor: custodianRow.cust_name,
                 permission: 'active',
               },
               {
@@ -2874,29 +2787,24 @@ describe('Dacproposals', () => {
             );
           });
           it('escrow table should contain expected rows', async () => {
-            const escrow = (
-              await shared.dacescrow_contract.escrowsTable({ scope: dacId })
-            ).rows[0];
-            expect(escrow.key).to.equal(cancelpropid);
-            expect(escrow.arb).to.equal(arbiter.name);
-            expect(escrow.arbiter_pay.quantity).to.equal('10.0000 PROPDAC');
-            expect(escrow.arbiter_pay.contract).to.equal(
-              shared.dac_token_contract.name
-            );
-
-            expect(escrow.receiver).to.equal(proposer1Account.name);
-            expect(escrow.sender).to.equal(prop_funds_source_account.name);
-            expect(escrow.receiver_pay.quantity).to.equal('106.0000 EOS');
-            expect(escrow.receiver_pay.contract).to.equal('eosio.token');
-            expect(escrow.memo).to.equal(
-              `${proposer1Account.name}:${cancelpropid}:${content_hash}`
-            );
+            // After cancelwip, the escrow for this proposal should be removed
+            // Check that the total escrow count is correct (should have one less)
             await assertRowCount(
               shared.dacescrow_contract.escrowsTable({ scope: dacId }),
-              2
+              1 // Should be 1 remaining escrow (from finvotespropid)
             );
-            expect(escrow.disputed).to.be.false;
-            expect(escrow.expires).to.equalDate(new Date());
+
+            // Verify the cancelled proposal's escrow is no longer in the table
+            const escrows = await shared.dacescrow_contract.escrowsTable({
+              scope: dacId,
+            });
+            const cancelledEscrow = escrows.rows.find(
+              (e) => e.key === cancelpropid
+            );
+            expect(
+              cancelledEscrow,
+              `Escrow for ${cancelpropid} should have been removed`
+            ).to.be.undefined;
           });
         });
       });
@@ -2915,10 +2823,12 @@ describe('Dacproposals', () => {
             lowerBound: finvotespropid,
             upperBound: finvotespropid,
           }),
-          [{
-            ...proposal,
-            state: ProposalState.ProposalStateHas_enough_finalize_votes
-          }]
+          [
+            {
+              ...proposal,
+              state: ProposalState.ProposalStateHas_enough_finalize_votes,
+            },
+          ]
         );
       });
 
@@ -3059,7 +2969,7 @@ describe('Dacproposals', () => {
           it('escrow table should contain expected rows', async () => {
             await assertRowCount(
               shared.dacescrow_contract.escrowsTable({ scope: dacId }),
-              2
+              0 // Should have been deleted by the inline action
             );
           });
         });
@@ -3502,17 +3412,26 @@ describe('Dacproposals', () => {
     before(async () => {
       // Remove proposer from whitelist if they exist
       try {
-        await shared.dacproposals_contract.rmvrecwl(proposer1Account.name, dacId, {
-          from: shared.dacproposals_contract.account,
-        });
+        await shared.dacproposals_contract.rmvrecwl(
+          proposer1Account.name,
+          dacId,
+          {
+            from: shared.dacproposals_contract.account,
+          }
+        );
       } catch (e) {
         // Ignore error if proposer wasn't in whitelist
       }
 
       // Add proposer to receiver whitelist
-      await shared.dacproposals_contract.addrecwl(proposer1Account.name, 12, dacId, {
-        from: shared.dacproposals_contract.account,
-      });
+      await shared.dacproposals_contract.addrecwl(
+        proposer1Account.name,
+        12,
+        dacId,
+        {
+          from: shared.dacproposals_contract.account,
+        }
+      );
 
       // Remove arbiter from whitelist if they exist
       try {
@@ -3580,17 +3499,21 @@ describe('Dacproposals', () => {
         const proposals = await shared.dacproposals_contract.proposalsTable({
           scope: dacId,
         });
-        const blocked_proposal = proposals.rows.find(p => p.proposal_id === test_proposal_id);
+        const blocked_proposal = proposals.rows.find(
+          (p) => p.proposal_id === test_proposal_id
+        );
         await assertRowsEqual(
           shared.dacproposals_contract.proposalsTable({
             scope: dacId,
             lowerBound: test_proposal_id,
             upperBound: test_proposal_id,
           }),
-          [{
-            ...blocked_proposal,
-            state: ProposalState.ProposalStateBlocked
-          }]
+          [
+            {
+              ...blocked_proposal,
+              state: ProposalState.ProposalStateBlocked,
+            },
+          ]
         );
       });
     });

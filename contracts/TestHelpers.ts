@@ -117,10 +117,10 @@ export class SharedTestObjects {
     await this.dacproposals_contract.account.addCodePermission();
 
     this.dacescrow_contract = await debugPromise(
-      ContractDeployer.deployWithName('dacescrow', 'dacescrow'),
-      'created dacescrow'
+      ContractDeployer.deployWithName('dacescrow', 'escrw.worlds'),
+      'created escrw.worlds'
     );
-    console.log('deployed dacescrow');
+    console.log('deployed escrw.worlds');
 
     this.msigworlds_contract = await debugPromise(
       ContractDeployer.deployWithName<Msigworlds>('msigworlds', 'msig.worlds'),
@@ -154,6 +154,7 @@ export class SharedTestObjects {
     this.configured_dac_memberterms = 'be2c9d0494417cf7522cd8d6f774477c';
     await this.add_auth_account_permissions();
     await this.add_token_contract_permissions();
+    await this.add_escrow_contract_permissions();
 
     await EOSManager.transact({
       actions: [
@@ -657,6 +658,67 @@ export class SharedTestObjects {
     );
 
     await this.referendum_contract.account.addCodePermission();
+  }
+
+  private async add_escrow_contract_permissions() {
+    console.log('adding approve and dispute to escrow');
+    // Use owner permission since active permission has already been changed to contract code
+    await debugPromise(
+      UpdateAuth.execUpdateAuth(
+        this.dacescrow_contract.account.owner,
+        this.dacescrow_contract.account.name,
+        'approve',
+        'active',
+        UpdateAuth.AuthorityToSet.forContractCode(
+          this.dacproposals_contract.account
+        )
+      ),
+      'add approve permission to escrow'
+    );
+
+    await debugPromise(
+      UpdateAuth.execLinkAuth(
+        this.dacescrow_contract.account.owner,
+        this.dacescrow_contract.account.name,
+        this.dacescrow_contract.account.name,
+        'approve',
+        'approve'
+      ),
+      'link approve action to approve permission'
+    );
+
+    await debugPromise(
+      UpdateAuth.execLinkAuth(
+        this.dacescrow_contract.account.owner,
+        this.dacescrow_contract.account.name,
+        this.dacescrow_contract.account.name,
+        'dispute',
+        'approve'
+      ),
+      'link dispute action to approve permission'
+    );
+
+    await debugPromise(
+      UpdateAuth.execLinkAuth(
+        this.dacescrow_contract.account.owner,
+        this.dacescrow_contract.account.name,
+        this.dacescrow_contract.account.name,
+        'disapprove',
+        'approve'
+      ),
+      'link disapprove action to approve permission'
+    );
+
+    await debugPromise(
+      UpdateAuth.execLinkAuth(
+        this.dacescrow_contract.account.owner,
+        this.dacescrow_contract.account.name,
+        this.dacescrow_contract.account.name,
+        'refund',
+        'approve'
+      ),
+      'link disapprove action to refund permission'
+    );
   }
 
   private async add_auth_account_permissions() {

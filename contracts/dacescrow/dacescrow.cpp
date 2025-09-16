@@ -171,7 +171,6 @@ namespace eosdac {
     }
 
     ACTION dacescrow::dispute(name key, name dac_id) {
-
         auto escrows = escrows_table(get_self(), dac_id.value);
         auto esc_itr = escrows.find(key.value);
         check(esc_itr != escrows.end(), "Could not find escrow with that index");
