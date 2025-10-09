@@ -89,7 +89,6 @@ ACTION daccustodian::setdaogov(
     if (!has_auth(get_self())) {
         const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
         require_auth(dacForScope.owner);
-        check(false, "not active yet");
     }
 
     auto globals = dacglobals{get_self(), dac_id};
@@ -112,7 +111,6 @@ ACTION daccustodian::setperiodlen(const uint32_t &periodlength, const name &dac_
     if (!has_auth(get_self())) {
         const dacdir::dac dacForScope = dacdir::dac_for_id(dac_id);
         require_auth(dacForScope.owner);
-        check(false, "not active yet");
     }
 
     auto globals = dacglobals{get_self(), dac_id};
