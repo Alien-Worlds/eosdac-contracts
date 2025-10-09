@@ -3603,7 +3603,7 @@ describe('Daccustodian', () => {
       });
     });
   });
-  context.skip('setdaogov', async () => {
+  context('setdaogov', async () => {
     const dacId = 'setdaogov';
     before(async () => {
       await shared.initDac(dacId, '4,GOVDAC', '1000000.0000 GOVDAC');
