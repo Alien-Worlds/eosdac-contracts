@@ -488,6 +488,34 @@ namespace eosdac {
         ACTION cancelwip(name proposal_id, name dac_id);
 
         /**
+         * @brief Lets the dac reclaim the funds from an abandoned proposal
+         *
+         * Where cancelwip is the proposer walking away from their own work, this is the dac
+         * recovering funds from a worker who has stopped responding. It is the only route by
+         * which the dac can take an escrow back, so that the escrow and the proposal are always
+         * settled in the same transaction and cannot drift apart.
+         *
+         * The escrow runs for twice the job duration, so waiting for its expiry means the worker
+         * has had the whole agreed window and more. A disputed escrow is out of scope here: it
+         * belongs to the nominated arbiter and has to be settled with arbapprove or arbdeny.
+         *
+         * This action handles abandoned work recovery:
+         * 1. Validates dac owner authorization and proposal state
+         * 2. Checks the escrow exists, has expired, and is not disputed
+         * 3. Calls dacescrow::refund to return the funds to the dac
+         * 4. Cleans up the proposal and associated votes
+         *
+         * @param proposal_id The unique proposal identifier
+         * @param dac_id The DAC scope identifier
+         *
+         * @pre Caller must be the dac owner
+         * @pre Proposal must be in progress, pending finalization, or have enough finalization votes
+         * @pre Corresponding escrow must exist and must have passed its own expiry
+         * @pre Escrow must not be disputed
+         */
+        ACTION reclaimwip(name proposal_id, name dac_id);
+
+        /**
          * @brief Initiates a dispute for a proposal that is pending finalization
          *
          * This is your recourse as a proposer when you believe you've completed work satisfactorily

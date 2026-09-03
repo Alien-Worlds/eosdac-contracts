@@ -3667,6 +3667,154 @@ describe('Dacproposals', () => {
     });
   });
 
+
+  // Also kept last: these fixtures deliberately leave escrow rows in place.
+  context('reclaimwip', async () => {
+    const abandonedPropId = 'abandonprop';
+    const disputedPropId = 'disputeprop';
+
+    // Takes a proposal all the way to work_in_progress so that it has a live escrow.
+    // job_duration is kept tiny because the escrow expires at twice that.
+    async function start_work_on(propId: string, pay: string) {
+      await shared.dacproposals_contract.createprop(
+        proposer1Account.name,
+        'reclaim_title',
+        'reclaim_summary',
+        arbiter.name,
+        { quantity: pay, contract: 'eosio.token' },
+        {
+          quantity: '10.0000 PROPDAC',
+          contract: shared.dac_token_contract.name,
+        },
+        'asdfasdfasdfasdfasdfasdfareclaim01',
+        propId,
+        category,
+        3,
+        dacId,
+        { from: proposer1Account }
+      );
+      for (let index = 0; index < proposeApproveTheshold; index++) {
+        const custodian = propDacCustodians[index];
+        await shared.dacproposals_contract.voteprop(
+          custodian.name,
+          propId,
+          VoteType.vote_approve,
+          dacId,
+          { from: custodian }
+        );
+      }
+      await shared.dacproposals_contract.arbagree(arbiter.name, propId, dacId, {
+        from: arbiter,
+      });
+      await shared.dacproposals_contract.startwork(propId, dacId, {
+        auths: [
+          { actor: proposer1Account.name, permission: 'active' },
+          { actor: shared.auth_account.name, permission: 'active' },
+        ],
+      });
+    }
+
+    before(async () => {
+      await set_approval_duration(30);
+      await start_work_on(abandonedPropId, '108.0000 EOS');
+    });
+    after(async () => {
+      await set_approval_duration(3);
+    });
+
+    context('before the escrow has expired', async () => {
+      it('should fail with escrow not expired error', async () => {
+        await assertEOSErrorIncludesMessage(
+          shared.dacproposals_contract.reclaimwip(abandonedPropId, dacId, {
+            from: shared.auth_account,
+          }),
+          'ERR::ESCROW_NOT_EXPIRED'
+        );
+      });
+    });
+
+    context('without dac owner auth', async () => {
+      it('should fail with auth error', async () => {
+        await assertMissingAuthority(
+          shared.dacproposals_contract.reclaimwip(abandonedPropId, dacId, {
+            from: otherAccount,
+          })
+        );
+      });
+      it('should fail for the proposer too', async () => {
+        await assertMissingAuthority(
+          shared.dacproposals_contract.reclaimwip(abandonedPropId, dacId, {
+            from: proposer1Account,
+          })
+        );
+      });
+    });
+
+    context('with a proposal that has no escrow', async () => {
+      it('should fail with escrow not found error', async () => {
+        await assertEOSErrorIncludesMessage(
+          shared.dacproposals_contract.reclaimwip(notfoundpropid, dacId, {
+            from: shared.auth_account,
+          }),
+          'ERR::PROPOSAL_NOT_FOUND'
+        );
+      });
+    });
+
+    context('with a disputed proposal', async () => {
+      before(async () => {
+        await start_work_on(disputedPropId, '109.0000 EOS');
+        await shared.dacproposals_contract.completework(disputedPropId, dacId, {
+          from: proposer1Account,
+        });
+        await shared.dacproposals_contract.dispute(disputedPropId, dacId, {
+          from: proposer1Account,
+        });
+        // The escrow lasts twice the job duration, so this outlives it.
+        await sleep(8000);
+      });
+      // Disputing moves the proposal out of the states reclaimwip accepts, so the state check
+      // catches it first. Either way the dac cannot take back an escrow that now belongs to the
+      // arbiter to settle with arbapprove or arbdeny.
+      it('should fail with wrong state error', async () => {
+        await assertEOSErrorIncludesMessage(
+          shared.dacproposals_contract.reclaimwip(disputedPropId, dacId, {
+            from: shared.auth_account,
+          }),
+          'ERR::RECLAIMWIP_WRONG_STATE'
+        );
+      });
+    });
+
+    context('after the escrow has expired', async () => {
+      it('should succeed for the dac owner', async () => {
+        await shared.dacproposals_contract.reclaimwip(abandonedPropId, dacId, {
+          from: shared.auth_account,
+        });
+      });
+      it('should have removed the proposal', async () => {
+        await assertRowCount(
+          shared.dacproposals_contract.proposalsTable({
+            scope: dacId,
+            lowerBound: abandonedPropId,
+            upperBound: abandonedPropId,
+          }),
+          0
+        );
+      });
+      it('should have removed the escrow', async () => {
+        await assertRowCount(
+          shared.dacescrow_contract.escrowsTable({
+            scope: dacId,
+            lowerBound: abandonedPropId,
+            upperBound: abandonedPropId,
+          }),
+          0
+        );
+      });
+    });
+  });
+
 });
 
 async function setup_test_user(testuser: Account, tokenSymbol: string) {

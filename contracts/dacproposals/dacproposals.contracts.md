@@ -177,6 +177,20 @@ The intent of finalize is to trigger the transfer of funds to the worker from th
 The intent of cancel is to cancel a proposal.
 
  <h1 class="contract">
+ reclaimwip
+ </h1>
+
+## ACTION: reclaimwip
+
+**PARAMETERS:**
+
+- **proposal_id** is an integer id for an existing proposal with work in progress.
+- **dac_id** is an account name representing the DAC for this action
+
+**INTENT:**
+The intent of reclaimwip is to allow the DAC to recover the funds from a proposal that the worker has abandoned. It can only be called by the DAC owner, only once the escrow for the proposal has passed its own expiry, which is twice the agreed job duration, and only while the escrow is not disputed. A disputed escrow belongs to the nominated arbiter and must be settled with arbapprove or arbdeny instead. On success the escrowed funds are returned to the DAC and the proposal and its votes are removed from the contract.
+
+ <h1 class="contract">
  comment
  </h1>
 

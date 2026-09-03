@@ -419,6 +419,41 @@ namespace eosdac {
         clearprop(prop, dac_id);
     }
 
+    ACTION dacproposals::reclaimwip(name proposal_id, name dac_id) {
+        auto dac = dacdir::dac_for_id(dac_id);
+        require_auth(dac.owner);
+
+        proposal_table  proposals(_self, dac_id.value);
+        const proposal &prop = proposals.get(proposal_id.value, "ERR::PROPOSAL_NOT_FOUND::Proposal not found.");
+
+        check(prop.state == STATE_IN_PROGRESS || prop.state == STATE_PENDING_FINALIZE ||
+                  prop.state == STATE_HAS_ENOUGH_FIN_VOTES,
+            "ERR::RECLAIMWIP_WRONG_STATE::Worker proposal is in the wrong state to be reclaimed.");
+
+        auto escrow = dac.account_for_type(dacdir::ESCROW);
+        check(is_account(escrow), "ERR::ESCROW_ACCOUNT_NOT_FOUND::Escrow account not found");
+        escrows_table escrows = escrows_table(escrow, dac_id.value);
+        auto          esc_itr = escrows.find(proposal_id.value);
+        check(esc_itr != escrows.end(),
+            "ERR::ESCROW_NOT_FOUND::There is no escrow to reclaim for this proposal.");
+
+        // The escrow lasts twice the job duration, so reaching its expiry means the worker has
+        // had the full window and then some. Only then may the dac take the funds back.
+        check(time_point_sec(current_time_point()) >= esc_itr->expires,
+            "ERR::ESCROW_NOT_EXPIRED::The escrow for this proposal has not expired yet.");
+
+        // A disputed escrow is the arbiter's to settle, not the dac's. Checked here so the
+        // caller gets a useful error instead of the escrow contract's refund assertion.
+        check(!esc_itr->disputed,
+            "ERR::ESCROW_DISPUTED::This escrow is disputed and must be resolved by the arbiter.");
+
+        eosio::action(eosio::permission_level{escrow, "approve"_n}, escrow, "refund"_n,
+            make_tuple(proposal_id.value, dac_id))
+            .send();
+
+        clearprop(prop, dac_id);
+    }
+
     ACTION dacproposals::dispute(name proposal_id, name dac_id) {
         proposal_table proposals(_self, dac_id.value);
 

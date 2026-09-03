@@ -87,6 +87,14 @@ Proposals and their votes stay in the contract tables after they are no longer u
 
 A proposal expires at the end of its approval window (`created_at + approval_duration`) and that deadline is not extended when work starts, so a proposal that is in progress can be expired while its escrow still holds the proposal pay. To avoid orphaning those funds, `clearexpprop` refuses to clear a proposal while an escrow exists for it. Such a proposal has to be resolved first through `cancelwip`, `finalize` or arbitration, which each settle the escrow, and can then be cleared.
 
-### cancel
+### cancelprop and cancelwip
 
-At any time a proposer for a worker proposal may choose to cancel the worker proposal. If this is before the worker has started any work on the proposal then this would remove the proposal and any associated votes with the proposal from the contract. If the worker has already commenced work on the proposal after they have been approved to work on it. The proposal and votes will be cleaned up but the funds that have been locked in the escrow contract for the proposal will remain locked until the escrow has expired. The the custodians will need to call the refund action after expiry to recover the funds from escrow.
+At any time a proposer for a worker proposal may choose to cancel the worker proposal. Before work has started there is no escrow yet, so `cancelprop` simply removes the proposal and any associated votes from the contract. Once work has started there is an escrow holding the pay, so `cancelwip` is used instead: it sends an inline `refund` to the escrow contract to return the funds to the DAC and cleans up the proposal and its votes in the same transaction.
+
+### reclaimwip
+
+`cancelwip` covers a proposer walking away from their own work, but it needs the proposer to sign. A worker who simply stops responding would otherwise leave the funds sitting in escrow indefinitely, so `reclaimwip` gives the DAC a way to recover them.
+
+It can only be called by the DAC owner, and only once the escrow has passed its own expiry, which is set to twice the agreed job duration when work starts, so the worker has had the whole agreed window and more. Like `cancelwip` it refunds the escrow to the DAC and clears the proposal and its votes together, so the escrow and the proposal can never drift out of step.
+
+A disputed escrow is out of scope for this action. Once a proposal is disputed the escrow belongs to the nominated arbiter and must be settled through `arbapprove` or `arbdeny`.
