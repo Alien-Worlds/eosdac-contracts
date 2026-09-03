@@ -1,0 +1,25 @@
+{
+  "finished_at": "2026-09-04T02:14:51.402Z",
+  "duration_ms": 612344,
+  "counts": { "passed": 523, "failed": 2, "pending": 0, "total_run": 525 },
+  "failures": [
+    {
+      "title": "Dacproposals finalize proposal in pending_finalize state with enough votes to complete finalize with denial before finalize is run dacescrow should be loaded with arbiter funds",
+      "state": "failed",
+      "duration_ms": 511,
+      "error": "AssertionError: expected [ { balance: '20.0000 PROPDAC' } ] to deeply equal [ { balance: '10.0000 PROPDAC' } ]",
+      "assert_message": null,
+      "error_full": "AssertionError: expected [ { balance: '20.0000 PROPDAC' } ] to deeply equal [ { balance: '10.0000 PROPDAC' } ]\n    + expected - actual\n\n     [\n    -    \"balance\": \"20.0000 PROPDAC\"\n    +    \"balance\": \"10.0000 PROPDAC\"\n     ]\n"
+    },
+    {
+      "title": "Stakevote XXX stakevoting voting staking and unstaking repeatedly 2 should work",
+      "state": "failed",
+      "duration_ms": 1204,
+      "error": "Error: duplicate transaction ba5bf7893a803099f1e185795d8593f8b7bbfef72f58a50a8e3ab1feeb93b21e",
+      "assert_message": null,
+      "error_full": "Error: duplicate transaction ba5bf7893a803099f1e185795d8593f8b7bbfef72f58a50a8e3ab1feeb93b21e\n    at new RpcError (node_modules/lamington/node_modules/eosjs/src/eosjs-rpcerror.ts:14:13)\n"
+    }
+  ],
+  "pending": [],
+  "tests": []
+}

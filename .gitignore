@@ -49,3 +49,9 @@ artifacts/compiled_contracts
 /debugging/tables_daccustodian.json
 .magic_key_value
 lib
+
+# Lamington test run artifacts (results json + console logs)
+.lamington/
+
+# Skill eval run outputs (regenerated per iteration)
+.claude/skills/*-workspace/iteration-*/
