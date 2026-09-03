@@ -56,6 +56,26 @@ describe('Dacproposals', () => {
   const otherfoundpropid = 'otherid';
   let eosiotoken: EosioToken;
 
+  // Rewrites just the approval_duration of the dac config, leaving the other settings as the
+  // tests here expect them. Used by the clearexpprop tests, which need control over when a
+  // proposal expires.
+  async function set_approval_duration(approval_duration: number) {
+    await shared.dacproposals_contract.updateconfig(
+      {
+        proposal_threshold: proposeApproveTheshold,
+        finalize_threshold: 5,
+        approval_duration,
+        proposal_fee: {
+          quantity: '0.0000 PROPDAC',
+          contract: shared.dac_token_contract.name,
+        },
+        min_proposal_duration: 0,
+      },
+      dacId,
+      { from: shared.dacproposals_contract.account }
+    );
+  }
+
   before(async () => {
     shared = await SharedTestObjects.getInstance();
 
@@ -1602,6 +1622,52 @@ describe('Dacproposals', () => {
             }),
             'ERR::PROPOSAL_NOT_EXPIRED'
           );
+        });
+        context('unexpired proposal without an escrow', async () => {
+          const unexpiredPropId = 'unexpirprop';
+          before(async () => {
+            await set_approval_duration(150);
+            await shared.dacproposals_contract.createprop(
+              proposer1Account.name,
+              'unexpired_title',
+              'unexpired_summary',
+              arbiter.name,
+              { quantity: '106.0000 EOS', contract: 'eosio.token' },
+              {
+                quantity: '10.0000 PROPDAC',
+                contract: shared.dac_token_contract.name,
+              },
+              'asdfasdfasdfasdfasdfasdfaunexpired',
+              unexpiredPropId,
+              category,
+              3,
+              dacId,
+              { from: proposer1Account }
+            );
+          });
+          after(async () => {
+            await set_approval_duration(3);
+          });
+          it('should not be cleared by an unrelated account', async () => {
+            await assertEOSErrorIncludesMessage(
+              shared.dacproposals_contract.clearexpprop(
+                unexpiredPropId,
+                dacId,
+                { from: otherAccount }
+              ),
+              'ERR::PROPOSAL_NOT_EXPIRED'
+            );
+          });
+          it('should not be cleared by the proposer either', async () => {
+            await assertEOSErrorIncludesMessage(
+              shared.dacproposals_contract.clearexpprop(
+                unexpiredPropId,
+                dacId,
+                { from: proposer1Account }
+              ),
+              'ERR::PROPOSAL_NOT_EXPIRED'
+            );
+          });
         });
         it('should clear the expired proposals', async () => {
           await shared.dacproposals_contract.clearexpprop(propId, dacId, {
@@ -3518,6 +3584,89 @@ describe('Dacproposals', () => {
       });
     });
   });
+
+  // Kept last in this suite: the fixture deliberately leaves a funded escrow in place, which
+  // would upset the token balance and escrow row assertions made by the contexts above.
+  context('clearexpprop with an expired proposal and a live escrow', async () => {
+    const escrowedPropId = 'escrowprop';
+    before(async () => {
+      // Long enough to collect the votes and start work, short enough that the approval
+      // window closes again while the escrow is still funded.
+      await set_approval_duration(30);
+      await shared.dacproposals_contract.createprop(
+        proposer1Account.name,
+        'escrowed_title',
+        'escrowed_summary',
+        arbiter.name,
+        { quantity: '107.0000 EOS', contract: 'eosio.token' },
+        {
+          quantity: '10.0000 PROPDAC',
+          contract: shared.dac_token_contract.name,
+        },
+        'asdfasdfasdfasdfasdfasdfaescrowed1',
+        escrowedPropId,
+        category,
+        3,
+        dacId,
+        { from: proposer1Account }
+      );
+      for (let index = 0; index < proposeApproveTheshold; index++) {
+        const custodian = propDacCustodians[index];
+        await shared.dacproposals_contract.voteprop(
+          custodian.name,
+          escrowedPropId,
+          VoteType.vote_approve,
+          dacId,
+          { from: custodian }
+        );
+      }
+      await shared.dacproposals_contract.arbagree(
+        arbiter.name,
+        escrowedPropId,
+        dacId,
+        { from: arbiter }
+      );
+      await shared.dacproposals_contract.startwork(escrowedPropId, dacId, {
+        auths: [
+          { actor: proposer1Account.name, permission: 'active' },
+          { actor: shared.auth_account.name, permission: 'active' },
+        ],
+      });
+      await sleep(31000);
+    });
+    after(async () => {
+      await set_approval_duration(3);
+    });
+    it('should have created the escrow', async () => {
+      await assertRowCount(
+        shared.dacescrow_contract.escrowsTable({
+          scope: dacId,
+          lowerBound: escrowedPropId,
+          upperBound: escrowedPropId,
+        }),
+        1
+      );
+    });
+    it('should refuse to clear while the escrow is live', async () => {
+      await assertEOSErrorIncludesMessage(
+        shared.dacproposals_contract.clearexpprop(escrowedPropId, dacId, {
+          from: otherAccount,
+        }),
+        'ERR::ESCROW_ACTIVE'
+      );
+    });
+    it('should still have the proposal record', async () => {
+      await assertRowCount(
+        shared.dacproposals_contract.proposalsTable({
+          scope: dacId,
+          lowerBound: escrowedPropId,
+          upperBound: escrowedPropId,
+        }),
+        1
+      );
+    });
+  });
+
 });
 
 async function setup_test_user(testuser: Account, tokenSymbol: string) {

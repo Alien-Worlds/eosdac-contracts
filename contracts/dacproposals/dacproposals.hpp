@@ -547,14 +547,21 @@ namespace eosdac {
          * @brief Clears an expired proposal from the contract
          *
          * This action removes expired proposals from the contract storage to free up
-         * RAM. It can be called by anyone once a proposal has expired. If an escrow
-         * exists, the proposal must be expired before it can be cleared.
+         * RAM. It can be called by anyone once a proposal has expired because the outcome
+         * does not depend on who calls it.
+         *
+         * A proposal expires at the end of its approval window and that deadline is not
+         * extended when work starts, so a proposal that is in progress can be expired while
+         * its escrow still holds the proposal pay. Clearing such a proposal would orphan
+         * those funds, so a proposal with a live escrow cannot be cleared here and has to be
+         * resolved through cancelwip, finalize or arbitration first.
          *
          * @param proposal_id The proposal identifier to clear
          * @param dac_id The DAC scope identifier
          *
          * @pre Proposal must exist
-         * @pre If escrow exists, proposal must have expired
+         * @pre Proposal must have expired
+         * @pre No escrow may exist for the proposal
          */
         ACTION clearexpprop(name proposal_id, name dac_id);
 

@@ -93,7 +93,7 @@ The intent of undelegateca is to remove delegation an active custodian's vote to
 - **dac_id** is an account name representing the DAC for this action
 
 **INTENT:**
-The intent of clearexpprop is to remove an expired proposal. This is only allowed if the proposal has expired.s
+The intent of clearexpprop is to remove an expired proposal and its votes in order to free up RAM. Any account may call it since the outcome does not depend on the caller, but it is only allowed after the proposal has expired and only while no escrow exists for the proposal. A proposal that still has a live escrow must be resolved with cancelwip, finalize or arbitration first so that the escrowed funds are not orphaned.
 
 <h1 class="contract">
     updpropvotes
