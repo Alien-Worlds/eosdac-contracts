@@ -90,7 +90,10 @@ namespace eosdac {
             extended_asset arbiter_pay;
             bool           arbiter_agreed = false;
             name           state;
-            time_point_sec expiry;
+            // Deadline for the approval window only. It is set when the proposal is created and
+            // is NOT extended by startwork, so a proposal that is in progress can be past this
+            // while its job, and the escrow holding the pay for it, are still live.
+            time_point_sec approval_expiry;
             time_point_sec created_at;
             uint32_t       job_duration; // job duration in seconds
             uint16_t       category;
@@ -108,9 +111,11 @@ namespace eosdac {
                 return uint64_t(category);
             }
 
-            bool has_not_expired() const {
+            // True while the proposal can still be approved by the custodians. This says nothing
+            // about whether the work, or an escrow created for it, is still live.
+            bool approval_period_open() const {
                 time_point_sec time_now = time_point_sec(current_time_point().sec_since_epoch());
-                return time_now < expiry;
+                return time_now < approval_expiry;
             }
         };
 

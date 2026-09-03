@@ -91,7 +91,7 @@ namespace eosdac {
             p.state        = STATE_PENDING_APPROVAL;
             p.category     = category;
             p.job_duration = job_duration;
-            p.expiry       = now() + approval_duration;
+            p.approval_expiry = now() + approval_duration;
             p.created_at   = now();
         });
     }
@@ -149,7 +149,7 @@ namespace eosdac {
         switch (ProposalState{prop.state.value}) {
         case ProposalStatePending_approval:
         case ProposalStateHas_enough_approvals_votes:
-            check(prop.has_not_expired(), "ERR::PROPOSAL_EXPIRED::Proposal has expired.");
+            check(prop.approval_period_open(), "ERR::PROPOSAL_EXPIRED::Proposal has expired.");
             check(vote == VOTE_PROP_APPROVE || vote == VOTE_PROP_DENY,
                 "ERR::VOTEPROP_INVALID_VOTE::Invalid vote for the current proposal state.");
             break;
@@ -195,7 +195,7 @@ namespace eosdac {
         proposal_table proposals(_self, dac_id.value);
 
         const proposal &prop = proposals.get(proposal_id.value, "ERR::PROPOSAL_NOT_FOUND::Proposal not found.");
-        check(prop.has_not_expired(), "ERR::PROPOSAL_EXPIRED::Proposal has expired.");
+        check(prop.approval_period_open(), "ERR::PROPOSAL_EXPIRED::Proposal has expired.");
 
         proposal_vote_table prop_votes(_self, dac_id.value);
         auto                by_prop_and_voter = prop_votes.get_index<"propandvoter"_n>();
@@ -420,18 +420,6 @@ namespace eosdac {
     }
 
     ACTION dacproposals::dispute(name proposal_id, name dac_id) {
-        // The escrow should be locked first in a Transaction.
-        auto escrow = dacdir::dac_for_id(dac_id).account_for_type(dacdir::ESCROW);
-        check(is_account(escrow), "ERR::ESCROW_ACCOUNT_NOT_FOUND::Escrow account not found");
-        escrows_table escrows = escrows_table(escrow, dac_id.value);
-        auto          esc_itr = escrows.find(proposal_id.value);
-        check(esc_itr != escrows.end(),
-            "ERR::ESCROW_ACTIVE::There should be an escrow for a proposal for this action. Call cancelprop instead.");
-
-        eosio::action(
-            eosio::permission_level{escrow, "approve"_n}, escrow, "dispute"_n, make_tuple(proposal_id.value, dac_id))
-            .send();
-
         proposal_table proposals(_self, dac_id.value);
 
         const proposal &prop = proposals.get(proposal_id.value, "ERR::PROPOSAL_NOT_FOUND::Proposal not found.");
@@ -440,6 +428,18 @@ namespace eosdac {
         assertValidMember(prop.proposer, dac_id);
         check(prop.state == STATE_PENDING_FINALIZE || prop.state == STATE_HAS_ENOUGH_FIN_VOTES,
             "ERR::DISPUTE_WRONG_STATE::Worker proposal can only be disputed from Pending_finalize state");
+
+        auto escrow = dacdir::dac_for_id(dac_id).account_for_type(dacdir::ESCROW);
+        check(is_account(escrow), "ERR::ESCROW_ACCOUNT_NOT_FOUND::Escrow account not found");
+        escrows_table escrows = escrows_table(escrow, dac_id.value);
+        auto          esc_itr = escrows.find(proposal_id.value);
+        check(esc_itr != escrows.end(),
+            "ERR::ESCROW_ACTIVE::There should be an escrow for a proposal for this action. Call cancelprop instead.");
+
+        // Locks the escrow so that only the nominated arbiter can settle it from here.
+        eosio::action(
+            eosio::permission_level{escrow, "approve"_n}, escrow, "dispute"_n, make_tuple(proposal_id.value, dac_id))
+            .send();
 
         proposals.modify(prop, prop.proposer, [&](proposal &p) {
             p.state = STATE_DISPUTED;
@@ -489,7 +489,7 @@ namespace eosdac {
 
         // Deliberately permissionless: once a proposal has expired anyone may clean it up since the
         // outcome does not depend on who calls it.
-        check(!prop.has_not_expired(),
+        check(!prop.approval_period_open(),
             "ERR::PROPOSAL_NOT_EXPIRED::The proposal has not expired so cannot be cleared yet.");
 
         auto escrow = dacdir::dac_for_id(dac_id).account_for_type(dacdir::ESCROW);
@@ -525,7 +525,7 @@ namespace eosdac {
         switch (ProposalState{prop.state.value}) {
         case ProposalStatePending_approval:
         case ProposalStateHas_enough_approvals_votes:
-            if (!prop.has_not_expired()) {
+            if (!prop.approval_period_open()) {
                 newPropState = ProposalStateExpired;
             } else {
                 approved_count = count_votes(prop, proposal_approve, dac_id);
@@ -746,7 +746,7 @@ namespace eosdac {
 
         check(prop.state == STATE_PENDING_APPROVAL || prop.state == STATE_HAS_ENOUGH_APP_VOTES,
             "ERR::STARTWORK_WRONG_STATE::Proposal is not in the pending approval state therefore cannot start work.");
-        check(prop.has_not_expired(), "ERR::PROPOSAL_EXPIRED::Proposal has expired.");
+        check(prop.approval_period_open(), "ERR::PROPOSAL_EXPIRED::Proposal has expired.");
 
         int16_t approved_count = count_votes(prop, proposal_approve, dac_id);
 
@@ -822,21 +822,17 @@ namespace eosdac {
     }
 
     void dacproposals::setpropfee(extended_asset new_proposal_fee, name dac_id) {
-        auto auth_account = dacdir::dac_for_id(dac_id).owner;
-        if (!has_auth(get_self())) {
-            check(false, "ERR::AUTH_SELF::Only the contract account can call this action at this stage.");
-            require_auth(auth_account);
-        }
+        // Self auth only at this stage. Handing this to the dac owner is a governance decision
+        // that has not been made yet.
+        require_auth(get_self());
         auto current_configs = configs{get_self(), dac_id};
         current_configs.set_proposal_fee(new_proposal_fee);
     }
 
     void dacproposals::minduration(uint32_t new_min_proposal_duration, name dac_id) {
-        auto auth_account = dacdir::dac_for_id(dac_id).owner;
-        if (!has_auth(get_self())) {
-            check(false, "ERR::AUTH_SELF::Only the contract account can call this action at this stage.");
-            require_auth(auth_account);
-        }
+        // Self auth only at this stage. Handing this to the dac owner is a governance decision
+        // that has not been made yet.
+        require_auth(get_self());
         auto current_configs = configs{get_self(), dac_id};
         current_configs.set_min_proposal_duration(new_min_proposal_duration);
     }
