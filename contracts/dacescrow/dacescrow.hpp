@@ -73,10 +73,12 @@ namespace eosdac {
         /**
          * @brief Approves an escrow and releases funds to the receiver
          *
-         * This action can be called by the sender (when escrow is not disputed), the arbiter
-         * (when escrow is disputed/locked), or the contract itself for inter-contract calls.
-         * Upon success, the escrow funds will be sent to the receiver and the arbiter's
-         * fees will be sent to the arbiter account. The escrow record will be removed from the contract table.
+         * This action is only callable by the proposals contract, which sends it as
+         * escrow@approve. The named approver must still be the sender (when the escrow is not
+         * disputed) or the arbiter (when it is), but the call itself arrives from the proposals
+         * contract so that the escrow and the proposal it belongs to are always settled
+         * together. Upon success the escrow funds will be sent to the receiver and the
+         * arbiter's fees to the arbiter account, and the escrow record removed.
          *
          * @param key: the unique identifier for the escrow entry
          * @param approver: the EOSIO account name for the account approving this escrow.
@@ -86,26 +88,29 @@ namespace eosdac {
         /**
          * @brief Disapproves an escrow and returns funds to the sender
          *
-         * This action can be called by the assigned arbiter for the escrow (when escrow is disputed)
-         * or by the contract itself for inter-contract calls. Upon success, the escrow funds will be
-         * returned to the sender of the escrow funds and the escrow record will be removed from the
-         * contract table.
+         * This action is only callable by the proposals contract, which sends it as
+         * escrow@approve while handling arbdeny. The named disapprover must still be the
+         * assigned arbiter and the escrow must be disputed. Upon success the escrow funds will
+         * be returned to the sender and the escrow record removed.
          *
          * @param key: the unique identifier for the escrow entry
          * @param disapprover: the EOSIO account name for the account disapproving this escrow.
          * @param dac_id The dac_id for the scope where the escrow is stored
          *
-         * @pre Only the arbiter can disapprove when called by external accounts
-         * @pre Escrow must be in disputed/locked state when called by arbiter
+         * @pre Caller must be this contract, i.e. the proposals contract acting as escrow@approve
+         * @pre The named disapprover must be the arbiter
+         * @pre Escrow must be in disputed/locked state
          */
         ACTION disapprove(name key, name disapprover, name dac_id);
         /**
          * @brief Refunds the escrowed amount back to the sender
          *
-         * This action can be called by the receiver (at any time), the sender (after expiry),
-         * or the contract itself for inter-contract calls. The escrow must not be locked for
-         * arbitration. Upon success, the escrowed funds will be transferred back to the sender's
-         * account and the escrow record will be removed from the contract.
+         * This action is only callable by the proposals contract, which reaches it through
+         * cancelwip when the proposer abandons their own work, or reclaimwip when the dac
+         * recovers an escrow the worker has left behind. Those actions own the rules about who
+         * may recover what and when, including the escrow expiry that used to be checked here.
+         * The escrow must not be locked for arbitration. Upon success the escrowed funds are
+         * returned to the sender and the escrow record removed.
          *
          * @param key Unique identifer for the escrow to refund
          * @param dac_id The dac_id for the scope where the escrow is stored
@@ -115,16 +120,18 @@ namespace eosdac {
         /**
          * @brief Initiates a dispute for an escrow
          *
-         * This action is intended to dispute an escrow that has not been paid but the receiver feels should be
-         * paid. It can be called by the intended receiver of the escrow or by the contract itself for inter-contract
-         * calls. The escrow must have been funded before it can be disputed. Upon success the escrow record will be
-         * locked and then it can only be resolved by the nominated arbiter for the escrow.
+         * This action locks an escrow that has not been paid but the receiver feels should be.
+         * It is only callable by the proposals contract, which sends it while moving the
+         * proposal into its disputed state, so that the escrow lock and the proposal state
+         * always agree. The escrow must have been funded before it can be disputed. Upon
+         * success the escrow record is locked and can then only be resolved by the nominated
+         * arbiter.
          *
          * @param key Unique identifer for the escrow to dispute
          * @param dac_id The dac_id for the scope where the escrow is stored
          *
+         * @pre Caller must be this contract, i.e. the proposals contract acting as escrow@approve
          * @pre Escrow must have been funded (receiver_pay > 0)
-         * @pre When called by external accounts, only the receiver can dispute
          */
         ACTION dispute(name key, name dac_id);
         /**

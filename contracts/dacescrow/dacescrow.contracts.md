@@ -39,7 +39,7 @@ approve
 * __approver__ is an eosio account name. 
 
 **INTENT:** 
-The intent of approve is to approve the release of funds to the intended receiver.  Only the arbitrator or the sender can call this action, the receiver is assumed to always approve of the release of funds.
+The intent of approve is to approve the release of funds to the intended receiver. The approver must be either the sender, when the escrow is not disputed, or the appointed arbitrator, when it is; the receiver is assumed to always approve of the release of funds. This action is only callable by the worker proposals contract, so that the escrow and the proposal it belongs to are always settled in the same transaction and cannot disagree about whether the work is still live.
  ####Warning: This action will store the content on the chain in the history logs and the data cannot be deleted later.
 
 <h1 class="contract">
@@ -52,7 +52,7 @@ The intent of approve is to approve the release of funds to the intended receive
 * __disapprover__ is an eosio account name. 
 
 **INTENT:** 
-The intent of disapprove is to disapprove the release of funds to the intended receiver. Only the appointed arbitrator can call this action and the result will be that the funds contained in the escrow will be returned to the sender, less any arbitration fee.
+The intent of disapprove is to disapprove the release of funds to the intended receiver. The disapprover must be the appointed arbitrator and the escrow must be disputed. The result is that the funds contained in the escrow are returned to the sender, less any arbitration fee. This action is only callable by the worker proposals contract, which reaches it through the arbiter's ruling.
  ####Warning: This action will store the content on the chain in the history logs and the data cannot be deleted later. 
 
 <h1 class="contract">
@@ -64,7 +64,7 @@ The intent of disapprove is to disapprove the release of funds to the intended r
 **PARAMETERS:**
 * __key__ is a unique identifying integer for an escrow entry. 
 
-**INTENT:** The intent of refund is to return the escrowed funds back to the original sender. This action can only be run after the contract has passed the intended expiry time.
+**INTENT:** The intent of refund is to return the escrowed funds back to the original sender. It is only callable by the worker proposals contract, which reaches it when the proposer cancels work they have started, or when the DAC reclaims an escrow that the worker has abandoned after it has passed its expiry time. Those actions carry the rules about who may recover the funds and when.
 **TERM:** This action lasts for the duration of the time taken to process the transaction.
 
 
@@ -77,18 +77,18 @@ The intent of disapprove is to disapprove the release of funds to the intended r
 **PARAMETERS:**
 * __key__ is a unique identifying integer for an escrow entry. 
 
-**INTENT:** The intent of cancel is to cancel an escrow agreement. This action can only be performed by the sender as long as no funds have already been transferred for the escrow agreement. Otherwise they would need to wait for the expiry time and then use the refund action.
+**INTENT:** The intent of cancel is to cancel an escrow agreement. This action can only be performed by the sender as long as no funds have already been transferred for the escrow agreement. Once the escrow has been funded it has to be settled through the worker proposals contract instead.
 **TERM:** This action lasts for the duration of the time taken to process the transaction.
 
 <h1 class="contract">
-  clean
+  dispute
 </h1>
 
-## ACTION: clean
+## ACTION: dispute
 
-**INTENT:** The intent of clean is remove all existing escrow agreements for developer purposes. This can only be run with _self permission of the contract which would be unavailable on the main net once the contract permissions are removed for the contract account.
+**PARAMETERS:**
+* __key__ is a unique identifying integer for an escrow entry.
+* __dac_id__ is an account name representing the DAC for this action.
+
+**INTENT:** The intent of dispute is to lock a funded escrow so that it can no longer be released or refunded by the sender or the receiver, and can only be resolved by the appointed arbitrator. It is only callable by the worker proposals contract, which sends it while moving the proposal into its disputed state, so that the lock on the escrow and the state of the proposal always agree.
 **TERM:** This action lasts for the duration of the time taken to process the transaction.
-
-
-
-

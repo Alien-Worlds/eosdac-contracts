@@ -31,6 +31,21 @@ describe('DACEscrow', () => {
   let dacId: string;
   let regMembers: Account[];
 
+  // The escrow contract only accepts approve/disapprove/refund/dispute from itself, which in
+  // production means the proposals contract sending them as escrow@approve. These tests
+  // exercise the escrow contract on its own, so they sign as escrow@approve directly - the
+  // harness adds the escrow account's key to that permission for exactly this purpose. The
+  // approver/disapprover arguments still carry the acting party and the contract still checks
+  // them, so the business rules below are covered as they are in production.
+  const escrowAuth = () => ({
+    auths: [
+      {
+        actor: shared.dacescrow_contract.account.name,
+        permission: 'approve',
+      },
+    ],
+  });
+
   const escrowKey = 'testescrow1';
   const memo = 'Test escrow payment';
   const receiverPayAmount = '10.0000 EOS';
@@ -145,13 +160,14 @@ describe('DACEscrow', () => {
 
     it('should allow arbiter to approve escrow', async () => {
       // First dispute the escrow
-      await shared.dacescrow_contract.dispute(escrowKey, dacId, {
-        from: receiver,
-      });
+      await shared.dacescrow_contract.dispute(escrowKey, dacId, escrowAuth());
 
-      await shared.dacescrow_contract.approve(escrowKey, arbiter.name, dacId, {
-        from: arbiter,
-      });
+      await shared.dacescrow_contract.approve(
+        escrowKey,
+        arbiter.name,
+        dacId,
+        escrowAuth()
+      );
 
       // Verify escrow was removed after approval
       const escrows = await shared.dacescrow_contract.escrowsTable({
@@ -199,9 +215,11 @@ describe('DACEscrow', () => {
     });
 
     it('should allow receiver to dispute escrow', async () => {
-      await shared.dacescrow_contract.dispute(disputeEscrowKey, dacId, {
-        from: receiver,
-      });
+      await shared.dacescrow_contract.dispute(
+        disputeEscrowKey,
+        dacId,
+        escrowAuth()
+      );
 
       const escrows = await shared.dacescrow_contract.escrowsTable({
         scope: dacId,
@@ -214,7 +232,7 @@ describe('DACEscrow', () => {
         disputeEscrowKey,
         arbiter.name,
         dacId,
-        { from: arbiter }
+        escrowAuth()
       );
 
       // Verify escrow was removed after disapproval
@@ -284,13 +302,17 @@ describe('DACEscrow', () => {
       );
     });
 
-    it('should allow refund after expiry', async () => {
-      // Wait for 2 seconds to ensure escrow has expired
+    // The escrow contract no longer gates refunds on its own expiry: the proposals contract
+    // owns that rule now, in cancelwip for the proposer and reclaimwip for the dac. The sleep
+    // is kept so the escrow is genuinely past its expiry, matching the production path.
+    it('should allow refund of an expired escrow', async () => {
       await sleep(2000);
 
-      await shared.dacescrow_contract.refund(refundEscrowKey, dacId, {
-        from: sender,
-      });
+      await shared.dacescrow_contract.refund(
+        refundEscrowKey,
+        dacId,
+        escrowAuth()
+      );
 
       const escrows = await shared.dacescrow_contract.escrowsTable({
         scope: dacId,
@@ -348,9 +370,12 @@ describe('DACEscrow', () => {
       );
 
       await assertEOSErrorIncludesMessage(
-        shared.dacescrow_contract.approve(approveKey, receiver.name, dacId, {
-          from: receiver,
-        }),
+        shared.dacescrow_contract.approve(
+          approveKey,
+          receiver.name,
+          dacId,
+          escrowAuth()
+        ),
         'ERR::ESCROW_NOT_ALLOWED_TO_APPROVE::Only the arbiter or sender can approve an escrow'
       );
     });
@@ -442,7 +467,7 @@ describe('DACEscrow', () => {
   });
 
   describe('Dispute Edge Cases', () => {
-    it('should not allow sender to dispute escrow', async () => {
+    it('should not allow the sender to dispute directly', async () => {
       const senderDisputeKey = 'senderdispute';
       const expires = await currentHeadTimeWithAddedSeconds(3600);
 
@@ -480,16 +505,14 @@ describe('DACEscrow', () => {
       );
 
       await assertEOSErrorIncludesMessage(
-        shared.dacescrow_contract.dispute(unfundedKey, dacId, {
-          from: receiver,
-        }),
+        shared.dacescrow_contract.dispute(unfundedKey, dacId, escrowAuth()),
         'This has not been initialized with a transfer'
       );
     });
   });
 
   describe('Refund Edge Cases', () => {
-    it('should not allow arbiter to refund', async () => {
+    it('should not allow the arbiter to refund directly', async () => {
       const arbRefundKey = 'arbrefund';
       const expires = await currentHeadTimeWithAddedSeconds(3600);
 
@@ -540,14 +563,18 @@ describe('DACEscrow', () => {
         { from: sender }
       );
 
-      await shared.dacescrow_contract.dispute(disputedRefundKey, dacId, {
-        from: receiver,
-      });
+      await shared.dacescrow_contract.dispute(
+        disputedRefundKey,
+        dacId,
+        escrowAuth()
+      );
 
       await assertEOSErrorIncludesMessage(
-        shared.dacescrow_contract.refund(disputedRefundKey, dacId, {
-          from: receiver,
-        }),
+        shared.dacescrow_contract.refund(
+          disputedRefundKey,
+          dacId,
+          escrowAuth()
+        ),
         'ERR::ESCROW_DISPUTED::This escrow is locked and can only be approved/disapproved by the arbiter'
       );
     });
@@ -622,9 +649,12 @@ describe('DACEscrow', () => {
       );
 
       // Sender approves the undisputed escrow
-      await shared.dacescrow_contract.approve(approveKey, sender.name, dacId, {
-        from: sender,
-      });
+      await shared.dacescrow_contract.approve(
+        approveKey,
+        sender.name,
+        dacId,
+        escrowAuth()
+      );
 
       // Verify escrow was removed after approval
       const escrows = await shared.dacescrow_contract.escrowsTable({
@@ -672,15 +702,16 @@ describe('DACEscrow', () => {
       );
 
       // Receiver disputes the escrow
-      await shared.dacescrow_contract.dispute(disputedKey, dacId, {
-        from: receiver,
-      });
+      await shared.dacescrow_contract.dispute(disputedKey, dacId, escrowAuth());
 
       // Sender tries to approve the disputed escrow - should fail
       await assertEOSErrorIncludesMessage(
-        shared.dacescrow_contract.approve(disputedKey, sender.name, dacId, {
-          from: sender,
-        }),
+        shared.dacescrow_contract.approve(
+          disputedKey,
+          sender.name,
+          dacId,
+          escrowAuth()
+        ),
         'ERR::ESCROW_DISPUTED::This escrow is locked and can only be approved/disapproved by the arbiter'
       );
     });
@@ -725,9 +756,7 @@ describe('DACEscrow', () => {
           otherApproveKey,
           receiver.name,
           dacId,
-          {
-            from: receiver,
-          }
+          escrowAuth()
         ),
         'ERR::ESCROW_NOT_ALLOWED_TO_APPROVE::Only the arbiter or sender can approve an escrow'
       );
@@ -763,9 +792,12 @@ describe('DACEscrow', () => {
       // Do NOT transfer arbiter payment - leave it unfunded
 
       // Test approve() - should work but arbiter gets nothing
-      await shared.dacescrow_contract.approve(partialKey, sender.name, dacId, {
-        from: sender,
-      });
+      await shared.dacescrow_contract.approve(
+        partialKey,
+        sender.name,
+        dacId,
+        escrowAuth()
+      );
 
       // Verify escrow was removed after approval (since approve() should work)
       const escrows = await shared.dacescrow_contract.escrowsTable({
@@ -807,9 +839,12 @@ describe('DACEscrow', () => {
 
       // Try to approve() - should fail
       await assertEOSErrorIncludesMessage(
-        shared.dacescrow_contract.approve(arbOnlyKey, sender.name, dacId, {
-          from: sender,
-        }),
+        shared.dacescrow_contract.approve(
+          arbOnlyKey,
+          sender.name,
+          dacId,
+          escrowAuth()
+        ),
         'This has not been initialized with a transfer'
       );
 
@@ -850,9 +885,7 @@ describe('DACEscrow', () => {
 
       // Receiver tries to dispute - should fail
       await assertEOSErrorIncludesMessage(
-        shared.dacescrow_contract.dispute(disputeArbKey, dacId, {
-          from: receiver,
-        }),
+        shared.dacescrow_contract.dispute(disputeArbKey, dacId, escrowAuth()),
         'This has not been initialized with a transfer'
       );
 
@@ -899,9 +932,7 @@ describe('DACEscrow', () => {
       await sleep(2000);
 
       // Sender refunds
-      await shared.dacescrow_contract.refund(refundRecKey, dacId, {
-        from: sender,
-      });
+      await shared.dacescrow_contract.refund(refundRecKey, dacId, escrowAuth());
 
       // Verify escrow was removed after refund
       const escrows = await shared.dacescrow_contract.escrowsTable({
@@ -911,6 +942,92 @@ describe('DACEscrow', () => {
         escrows.rows.find((e) => e.key === refundRecKey),
         undefined,
         'Escrow should be removed after refund'
+      );
+    });
+  });
+
+  // These are the point of routing every settlement through the proposals contract: an
+  // escrow that is erased or locked behind the proposals contract's back leaves the proposal
+  // that tracks it stranded, since the proposals contract reads the presence of this row as
+  // the truth about whether the work is still live. Each of these calls used to succeed.
+  describe('Direct settlement by escrow parties is refused', () => {
+    const directKey = 'directsettl';
+
+    before(async () => {
+      const expires = await currentHeadTimeWithAddedSeconds(3600);
+      await shared.dacescrow_contract.init(
+        sender.name,
+        receiver.name,
+        arbiter.name,
+        expires,
+        memo,
+        directKey,
+        dacId,
+        { from: sender }
+      );
+      await eosiotoken.transfer(
+        sender.name,
+        shared.dacescrow_contract.account.name,
+        receiverPayAmount,
+        `rec:${directKey}:${dacId}`,
+        { from: sender }
+      );
+    });
+
+    it('should refuse a refund by the receiver', async () => {
+      await assertMissingAuthority(
+        shared.dacescrow_contract.refund(directKey, dacId, { from: receiver })
+      );
+    });
+
+    it('should refuse a refund by the sender', async () => {
+      await assertMissingAuthority(
+        shared.dacescrow_contract.refund(directKey, dacId, { from: sender })
+      );
+    });
+
+    it('should refuse an approve by the sender', async () => {
+      await assertMissingAuthority(
+        shared.dacescrow_contract.approve(directKey, sender.name, dacId, {
+          from: sender,
+        })
+      );
+    });
+
+    it('should refuse a dispute by the receiver', async () => {
+      await assertMissingAuthority(
+        shared.dacescrow_contract.dispute(directKey, dacId, { from: receiver })
+      );
+    });
+
+    it('should still be intact after all of those attempts', async () => {
+      const escrows = await shared.dacescrow_contract.escrowsTable({
+        scope: dacId,
+        lowerBound: directKey,
+        upperBound: directKey,
+      });
+      assert.equal(escrows.rows.length, 1, 'Escrow should be untouched');
+      assert.equal(
+        escrows.rows[0].disputed,
+        false,
+        'Escrow should not be locked'
+      );
+    });
+
+    it('should refuse an approve by the arbiter once disputed', async () => {
+      await shared.dacescrow_contract.dispute(directKey, dacId, escrowAuth());
+      await assertMissingAuthority(
+        shared.dacescrow_contract.approve(directKey, arbiter.name, dacId, {
+          from: arbiter,
+        })
+      );
+    });
+
+    it('should refuse a disapprove by the arbiter once disputed', async () => {
+      await assertMissingAuthority(
+        shared.dacescrow_contract.disapprove(directKey, arbiter.name, dacId, {
+          from: arbiter,
+        })
       );
     });
   });

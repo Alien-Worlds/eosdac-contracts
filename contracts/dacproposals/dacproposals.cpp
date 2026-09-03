@@ -623,7 +623,10 @@ namespace eosdac {
         auto funding_source = dacdir::dac_for_id(dac_id).account_for_type(dacdir::PROP_FUNDS_SOURCE);
         auto escrow         = dacdir::dac_for_id(dac_id).account_for_type(dacdir::ESCROW);
 
-        eosio::action(eosio::permission_level{funding_source, "active"_n}, escrow, "approve"_n,
+        // Sent as escrow@approve like every other inline call into the escrow contract. The
+        // funding source is still named as the approver, and the escrow still checks that it
+        // is the sender of an undisputed escrow, but the authority comes from this contract.
+        eosio::action(eosio::permission_level{escrow, "approve"_n}, escrow, "approve"_n,
             make_tuple(prop.proposal_id.value, funding_source, dac_id))
             .send();
 
