@@ -145,6 +145,9 @@ namespace eosdac {
         ACTION cancel(name key, name dac_id);
 
       private:
+        /// Pays the arbiter their fee, for escrows they have ruled on.
         void pay_arbiter(const escrows_table::const_iterator esc_itr);
+        /// Returns an unearned arbiter fee to the sender, for escrows that end without a ruling.
+        void refund_arbiter_pay(const escrows_table::const_iterator esc_itr);
     };
 } // namespace eosdac

@@ -1031,4 +1031,91 @@ describe('DACEscrow', () => {
       );
     });
   });
+
+  // The arbiter fee is only earned by ruling on a dispute. Before this, refund and cancel
+  // erased the escrow row while leaving that fee sitting in the escrow contract with nothing
+  // referring to it, so it accumulated there permanently across every cancelwip.
+  describe('Unearned arbiter pay returns to the dac', () => {
+    it('should return the arbiter pay on refund', async () => {
+      const key = 'arbrefund2';
+      const expires = await currentHeadTimeWithAddedSeconds(3600);
+      await shared.dacescrow_contract.init(
+        sender.name,
+        receiver.name,
+        arbiter.name,
+        expires,
+        memo,
+        key,
+        dacId,
+        { from: sender }
+      );
+      await eosiotoken.transfer(
+        sender.name,
+        shared.dacescrow_contract.account.name,
+        receiverPayAmount,
+        `rec:${key}:${dacId}`,
+        { from: sender }
+      );
+      await eosiotoken.transfer(
+        sender.name,
+        shared.dacescrow_contract.account.name,
+        arbiterPayAmount,
+        `arb:${key}:${dacId}`,
+        { from: sender }
+      );
+
+      const before = await eosiotoken.accountsTable({ scope: sender.name });
+      const balanceBefore = before.rows[0].balance;
+
+      await shared.dacescrow_contract.refund(key, dacId, escrowAuth());
+
+      // Both the receiver pay and the unearned arbiter pay come back to the sender.
+      const after = await eosiotoken.accountsTable({ scope: sender.name });
+      const expected =
+        Number(balanceBefore.split(' ')[0]) +
+        Number(receiverPayAmount.split(' ')[0]) +
+        Number(arbiterPayAmount.split(' ')[0]);
+      assert.equal(
+        after.rows[0].balance,
+        `${expected.toFixed(4)} EOS`,
+        'Sender should get back both the receiver pay and the arbiter pay'
+      );
+    });
+
+    it('should return the arbiter pay on cancel of an arbiter-only escrow', async () => {
+      const key = 'arbcancel1';
+      const expires = await currentHeadTimeWithAddedSeconds(3600);
+      await shared.dacescrow_contract.init(
+        sender.name,
+        receiver.name,
+        arbiter.name,
+        expires,
+        memo,
+        key,
+        dacId,
+        { from: sender }
+      );
+      // Only the arbiter side is funded, which cancel still permits.
+      await eosiotoken.transfer(
+        sender.name,
+        shared.dacescrow_contract.account.name,
+        arbiterPayAmount,
+        `arb:${key}:${dacId}`,
+        { from: sender }
+      );
+
+      const before = await eosiotoken.accountsTable({ scope: sender.name });
+      const balanceBefore = Number(before.rows[0].balance.split(' ')[0]);
+
+      await shared.dacescrow_contract.cancel(key, dacId, { from: sender });
+
+      const after = await eosiotoken.accountsTable({ scope: sender.name });
+      const expected = balanceBefore + Number(arbiterPayAmount.split(' ')[0]);
+      assert.equal(
+        after.rows[0].balance,
+        `${expected.toFixed(4)} EOS`,
+        'Sender should get the arbiter pay back when cancelling'
+      );
+    });
+  });
 });

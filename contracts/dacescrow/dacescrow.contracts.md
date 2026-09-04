@@ -64,7 +64,7 @@ The intent of disapprove is to disapprove the release of funds to the intended r
 **PARAMETERS:**
 * __key__ is a unique identifying integer for an escrow entry. 
 
-**INTENT:** The intent of refund is to return the escrowed funds back to the original sender. It is only callable by the worker proposals contract, which reaches it when the proposer cancels work they have started, or when the DAC reclaims an escrow that the worker has abandoned after it has passed its expiry time. Those actions carry the rules about who may recover the funds and when.
+**INTENT:** The intent of refund is to return the escrowed funds back to the original sender, including any amount escrowed for the arbiter, since an arbiter fee is only earned by ruling on a dispute and a refund means no ruling took place. It is only callable by the worker proposals contract, which reaches it when the proposer cancels work they have started, or when the DAC reclaims an escrow that the worker has abandoned after it has passed its expiry time. Those actions carry the rules about who may recover the funds and when.
 **TERM:** This action lasts for the duration of the time taken to process the transaction.
 
 
@@ -77,7 +77,7 @@ The intent of disapprove is to disapprove the release of funds to the intended r
 **PARAMETERS:**
 * __key__ is a unique identifying integer for an escrow entry. 
 
-**INTENT:** The intent of cancel is to cancel an escrow agreement. This action can only be performed by the sender as long as no funds have already been transferred for the escrow agreement. Once the escrow has been funded it has to be settled through the worker proposals contract instead.
+**INTENT:** The intent of cancel is to cancel an escrow agreement and return any amount escrowed for the arbiter to the sender. This action can only be performed by the sender as long as no funds have already been transferred for the escrow agreement. Once the escrow has been funded it has to be settled through the worker proposals contract instead.
 **TERM:** This action lasts for the duration of the time taken to process the transaction.
 
 <h1 class="contract">

@@ -91,8 +91,17 @@ completely different responses: real failures, setup/teardown hook failures, and
 suspected infrastructure flakes. Reading the raw log is a last resort, for when
 mocha never produced results at all.
 
-A `"before all" hook` failure is usually a targeting artifact rather than a
-defect. These suites build state across contexts - whitelists, custodian votes,
+One deploy timeout can look like a dozen failures. `SharedTestObjects` is a
+singleton built once in the first `before all` hook, so if a contract fails to
+deploy there - `created dacproposals: Error: deadline ... exceeded` is the one
+seen in practice, a load-dependent `setcode` timeout on the largest wasm - every
+later suite fails with `Cannot read properties of undefined (reading 'account')`
+against the half-built shared object. Read the *first* failure chronologically,
+not the summary counts: fourteen failures here were one event. The tell is that
+the cascade failures are all the same `undefined` message and all in hooks.
+
+A `"before all" hook` failure is otherwise usually a targeting artifact rather
+than a defect. These suites build state across contexts - whitelists, custodian votes,
 funded accounts - so a grep narrow enough to skip the context that does the setup
 leaves the hook without its preconditions. Widen the grep to the whole top-level
 describe before believing it.
@@ -117,10 +126,19 @@ so a stray debug include in any contract blocks the entire suite. Use `print_f` 
 
 **Some failures are the harness, not the code.** `duplicate transaction`,
 `deadline ... exceeded`, `ECONNREFUSED` and `Transaction took too long` all come
-from nodeos or the container rather than contract logic, and clear on a rerun. The
-summary flags these separately. Confirm by rerunning just that test with `--grep`
-before you spend time debugging it, and never report one as a regression without
-that rerun.
+from nodeos or the container rather than contract logic. The summary flags these
+separately. Confirm by rerunning before you spend time debugging one, and never
+report one as a regression without that rerun.
+
+Be careful about how much a rerun proves, in both directions. `deadline exceeded`
+while deploying a contract in a `before all` hook has been observed reproducing
+three times in a row, including on a freshly restarted chain, and then passing
+cleanly on the fourth attempt with the same code. If you bisect against that, a
+single passing control run will appear to convict whatever you stashed. When a
+suspected flake seems to correlate with your change, get more than one sample on
+each side before believing it - and prefer a control that reruns the *same* code,
+since that distinguishes a flaky test from a real one without any bisecting at
+all.
 
 ## Writing tests that fit these suites
 
