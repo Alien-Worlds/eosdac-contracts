@@ -99,6 +99,26 @@ def main():
         print(f"\nWARNING: no test failed but the run exited {args.exit_status}. "
               f"Something failed outside the tests; read the log.")
 
+    # Failures are reported in the order they happened. When a run collapses - a contract
+    # fails to deploy in the first hook, the chain dies mid-run - everything after the first
+    # event is knock-on, and the categories above will happily headline one of the knock-on
+    # failures as the "real" one. Say plainly which came first.
+    if len(failures) > 1:
+        first = failures[0]
+        detail = first.get("assert_message") or first.get("error", "")
+        print(f"\nfirst failure chronologically (later ones may be knock-on):")
+        print(f"  {first['title'][:150]}")
+        if detail:
+            print(f"    {detail[:160]}")
+
+        # Many failures sharing one error text is the signature of a single root cause.
+        from collections import Counter
+        shared = Counter(f.get("error", "")[:80] for f in failures if f.get("error"))
+        for text, count in shared.most_common(1):
+            if count > 2:
+                print(f"\n  note: {count} of {len(failures)} failures share the error "
+                      f"\"{text[:70]}\" - likely one root cause, not {count} problems.")
+
     if real:
         print(f"\n{len(real)} real failure(s):")
         for failure, _ in real:
@@ -126,6 +146,10 @@ def main():
 
     if not failures:
         print("\nno failures")
+
+    print(f"\nresults: {args.results}")
+    if args.log:
+        print(f"console log: {args.log}")
     return 0
 
 

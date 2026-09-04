@@ -45,6 +45,25 @@ fi
 
 mkdir -p "$(dirname "$OUT")" "$(dirname "$LOG")"
 
+# Skipping the build when a contract source has changed silently tests the previously
+# compiled wasm, and reports a confident green for code that was never run. That is worse
+# than a slow run, so refuse rather than warn.
+if [[ $SKIP_BUILD -eq 1 ]]; then
+  NEWEST_WASM="$(find artifacts -name '*.wasm' -print0 2>/dev/null \
+    | xargs -0 ls -t 2>/dev/null | head -1)"
+  if [[ -n "$NEWEST_WASM" ]]; then
+    STALE="$(find contracts contract-shared-headers \( -name '*.cpp' -o -name '*.hpp' \) 2>/dev/null \
+      | while read -r f; do [[ "$f" -nt "$NEWEST_WASM" ]] && echo "$f"; done | head -5)"
+    if [[ -n "$STALE" ]]; then
+      echo "refusing --skip-build: these sources are newer than the last build," >&2
+      echo "so the run would test a stale binary and report a meaningless pass:" >&2
+      echo "$STALE" | sed 's/^/  /' >&2
+      echo "drop --skip-build, or rebuild first." >&2
+      exit 4
+    fi
+  fi
+fi
+
 BACKUP="$(mktemp)"
 cp .lamingtonrc "$BACKUP"
 restore() { cp "$BACKUP" .lamingtonrc; rm -f "$BACKUP"; }

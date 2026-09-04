@@ -24,7 +24,7 @@ to `.lamington/run.log`, and prints a short summary. Options:
 |---|---|
 | `-g, --grep <pattern>` | Only run tests whose full title matches. This is the main speed lever. |
 | `-c, --contracts <list>` | Compile only these contracts, comma separated. |
-| `-s, --skip-build` | Skip compilation entirely. Only safe when no `.cpp`/`.hpp` changed. |
+| `-s, --skip-build` | Skip compilation entirely. Refused with exit 4 if any contract source is newer than the last build, since that would test a stale binary. |
 | `-b, --bail` | Stop at the first failure. Off by default. |
 | `-o, --out`, `-l, --log` | Override the results and log paths. |
 
@@ -90,6 +90,10 @@ The summary sorts failures into three buckets, which matters because they call f
 completely different responses: real failures, setup/teardown hook failures, and
 suspected infrastructure flakes. Reading the raw log is a last resort, for when
 mocha never produced results at all.
+
+The summary leads with the first failure chronologically, and says so when many
+failures share one error text, because the category headings alone can put a
+knock-on failure at the top of the report.
 
 One deploy timeout can look like a dozen failures. `SharedTestObjects` is a
 singleton built once in the first `before all` hook, so if a contract fails to
