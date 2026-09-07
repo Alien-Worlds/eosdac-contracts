@@ -86,6 +86,12 @@ ARGS=(test -DIS_DEV)
 
 printf 'running: lamington'; printf ' %q' "${ARGS[@]}"; printf '\n'
 printf 'running: lamington %s\n' "${ARGS[*]}" > "$LOG"
+
+# A results file from a previous run must never be read as this run's output. Mocha only
+# writes one if it actually ran, so a run that dies before mocha starts - a missing module,
+# a failed build - would otherwise be summarised from stale data and reported green.
+RUN_MARKER="$(mktemp)"
+: > "$RUN_MARKER"
 LAMINGTON_JSON_OUT="$OUT" node_modules/.bin/lamington "${ARGS[@]}" >>"$LOG" 2>&1
 STATUS=$?
 
@@ -96,6 +102,15 @@ if grep -q "contracts failed to compile" "$LOG"; then
   grep -E "error:|failed to compile" "$LOG" | head -5 >&2
   exit 3
 fi
+
+if [[ -f "$OUT" && ! "$OUT" -nt "$RUN_MARKER" ]]; then
+  echo "the results file at $OUT predates this run - mocha produced no results." >&2
+  echo "the run failed before any test executed; the last of the log:" >&2
+  tail -15 "$LOG" >&2
+  rm -f "$RUN_MARKER"
+  exit 5
+fi
+rm -f "$RUN_MARKER"
 
 python3 "$SKILL_DIR/scripts/summarize.py" "$OUT" --log "$LOG" --exit-status "$STATUS"
 exit $STATUS
