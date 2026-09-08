@@ -78,7 +78,10 @@ jobs:
         run: |
           node -e '
             const { include } = JSON.parse(require("fs").readFileSync(".lamingtonrc"));
-            process.stdout.write(include.map((f) => f.replace(/\.cpp$/, "")).join("\n"));
+            // Trailing newline matters: `while read` silently drops a final line
+            // without one, which left the last contract in the list without a
+            // directory and failed exactly one of the eleven.
+            include.forEach((f) => process.stdout.write(f.replace(/\.cpp$/, "") + "\n"));
           ' | while read -r name; do
             mkdir -p "artifacts/compiled_contracts/IS_DEV/$name"
           done
