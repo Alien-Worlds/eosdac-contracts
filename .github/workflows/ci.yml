@@ -26,6 +26,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The contracts include headers from contract-shared-headers/contracts-common,
+          # which is a submodule. Without this the checkout omits it and every contract
+          # that includes it fails to compile with "file not found".
+          #
+          # checkout rewrites the SSH URL in .gitmodules to token-authenticated HTTPS,
+          # so this works as long as the submodule repository is readable by the token.
+          # GITHUB_TOKEN is scoped to this repository alone, so a private submodule needs
+          # either a deploy key or a token with access to it, supplied here.
+          submodules: recursive
 
       - uses: actions/setup-node@v4
         with:
