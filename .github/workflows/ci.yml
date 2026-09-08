@@ -32,7 +32,12 @@ jobs:
           # Matches .tool-versions. Note .nvmrc says 18 and disagrees; these
           # should be reconciled, and until then this is the effective answer.
           node-version: '20.18.2'
-          cache: yarn
+          # No dependency cache here on purpose. setup-node's yarn cache broke
+          # the docker-cli-js git dependency, which has a prepare script that
+          # compiles it, with `ENOENT ... .yarn-tarball.tgz` inside the cache
+          # directory. A clean install with no cache builds it correctly, and
+          # install is a small part of a ten minute run, so the cache is not
+          # worth the fragility.
 
       # --frozen-lockfile makes this job fail rather than silently resolve
       # something new when yarn.lock and package.json disagree. That is the
