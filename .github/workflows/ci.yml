@@ -32,19 +32,22 @@ jobs:
           # Matches .tool-versions. Note .nvmrc says 18 and disagrees; these
           # should be reconciled, and until then this is the effective answer.
           node-version: '20.18.2'
-          # No dependency cache here on purpose. setup-node's yarn cache broke
-          # the docker-cli-js git dependency, which has a prepare script that
-          # compiles it, with `ENOENT ... .yarn-tarball.tgz` inside the cache
-          # directory. A clean install with no cache builds it correctly, and
-          # install is a small part of a ten minute run, so the cache is not
-          # worth the fragility.
+          # No dependency cache here. It was first removed on the theory that it
+          # caused the install failures below; it did not, they continued without
+          # it. Left off regardless: it saves little against a ten minute run and
+          # is one less thing between a red build and its cause.
 
       # --frozen-lockfile makes this job fail rather than silently resolve
       # something new when yarn.lock and package.json disagree. That is the
       # entire value of committing the lockfile: without it CI installs whatever
       # resolves today, and a dependency can drift under everyone at once.
+      # --network-concurrency 1 works around a yarn v1 race where parallel
+      # fetches corrupt its own cache, failing with ENOENT on .yarn-metadata.json
+      # or .yarn-tarball.tgz for an arbitrary package - a different one each run,
+      # which is what distinguishes it from a genuine problem with a dependency.
+      # It costs some install time and buys a deterministic install.
       - name: Install dependencies
-        run: yarn install --frozen-lockfile --non-interactive
+        run: yarn install --frozen-lockfile --non-interactive --network-concurrency 1
 
       # Fails the job early and legibly if the toolchain cannot even load,
       # rather than surfacing as a confusing failure inside the first test. A
