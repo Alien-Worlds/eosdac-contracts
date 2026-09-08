@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# Nothing here needs write access to the repository.
+permissions:
+  contents: read
+
+# A newer push to the same branch makes an in-flight run redundant. These runs
+# take about ten minutes each, so cancelling matters more than usual.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build contracts and run tests
+    runs-on: ubuntu-latest
+    # The suite compiles eleven contracts and runs 563 integration tests against
+    # a real nodeos in Docker. Ten minutes is typical; the ceiling is here to
+    # catch a hang rather than to bound normal work.
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches .tool-versions. Note .nvmrc says 18 and disagrees; see the
+          # note in the repository README about which is authoritative.
+          node-version: '20.18.2'
+
+      # yarn.lock is gitignored in this repository, so there is no lockfile to
+      # hash for setup-node's built-in cache and no --frozen-lockfile to use.
+      # That also means CI resolves dependencies fresh, which is the point: it
+      # is the only place that notices when a dependency drifts from what a
+      # developer happens to have installed locally.
+      - name: Install dependencies
+        run: yarn install --non-interactive
+
+      # Fails the job early and legibly if the toolchain cannot even load,
+      # rather than surfacing as a confusing failure inside the first test. A
+      # lamington release once shipped requiring mocha without declaring it,
+      # which this catches in seconds.
+      - name: Verify the test runner loads
+        run: yarn lamington test --help > /dev/null
+
+      # lamington pulls the prebuilt chain image when one has been published for
+      # this eos/cdt/contracts combination and builds it otherwise, so there is
+      # nothing to arrange here. Building costs several minutes but is correct.
+      - name: Build contracts and run the full suite
+        run: yarn test
+
+      # The log is the only way to diagnose a failure after the fact, and a
+      # failed run is exactly when it is wanted.
+      - name: Upload the chain and test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: |
+            .lamington/
+          retention-days: 7
+          if-no-files-found: ignore

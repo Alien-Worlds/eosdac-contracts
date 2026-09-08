@@ -356,6 +356,11 @@ namespace eosdac {
         proposal_table  proposals(_self, dac_id.value);
         const proposal &prop = proposals.get(proposal_id.value, "ERR::PROPOSAL_NOT_FOUND::Proposal not found.");
 
+        // Deliberately permissionless, like clearexpprop. By the time this can succeed the
+        // custodians have already voted to approve the payment, the minimum duration has
+        // passed, and the destination is fixed in the escrow row as the proposer. So the
+        // caller cannot influence whether it pays out or who it pays, only when the already
+        // approved payment is pushed through.
         check(prop.state == STATE_PENDING_FINALIZE || prop.state == STATE_HAS_ENOUGH_FIN_VOTES,
             "ERR::FINALIZE_WRONG_STATE::Proposal is not in the pending_finalize state therefore cannot be finalized.");
 
