@@ -33,7 +33,8 @@ node_modules
 /artifacts/compiled_contracts/contracts/daccustodian/daccustodian.wasm
 /artifacts/compiled_contracts/contracts/daccustodian/daccustodian.abi
 /yarn-error.log
-/yarn.lock
+# yarn.lock is committed: it is the only thing that makes an install
+# reproducible across machines and CI. See .github/workflows/ci.yml.
 .DS_Store
 /artifacts/compiled_contracts/contracts/msigworlds/msigworlds.abi
 /artifacts/compiled_contracts/contracts/msigworlds/msigworlds.wasm

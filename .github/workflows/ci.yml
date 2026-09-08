@@ -29,17 +29,17 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # Matches .tool-versions. Note .nvmrc says 18 and disagrees; see the
-          # note in the repository README about which is authoritative.
+          # Matches .tool-versions. Note .nvmrc says 18 and disagrees; these
+          # should be reconciled, and until then this is the effective answer.
           node-version: '20.18.2'
+          cache: yarn
 
-      # yarn.lock is gitignored in this repository, so there is no lockfile to
-      # hash for setup-node's built-in cache and no --frozen-lockfile to use.
-      # That also means CI resolves dependencies fresh, which is the point: it
-      # is the only place that notices when a dependency drifts from what a
-      # developer happens to have installed locally.
+      # --frozen-lockfile makes this job fail rather than silently resolve
+      # something new when yarn.lock and package.json disagree. That is the
+      # entire value of committing the lockfile: without it CI installs whatever
+      # resolves today, and a dependency can drift under everyone at once.
       - name: Install dependencies
-        run: yarn install --non-interactive
+        run: yarn install --frozen-lockfile --non-interactive
 
       # Fails the job early and legibly if the toolchain cannot even load,
       # rather than surfacing as a confusing failure inside the first test. A
