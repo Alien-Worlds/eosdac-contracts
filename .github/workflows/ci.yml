@@ -66,6 +66,23 @@ jobs:
       - name: Verify the test runner loads
         run: yarn lamington test --help > /dev/null
 
+      # The compiler runs as root inside the container and creates the per
+      # contract output directories itself, leaving them owned by root on a Linux
+      # runner. lamington then writes .mod.json into them from the host as the
+      # unprivileged user and fails with EACCES. Docker Desktop maps ownership
+      # transparently, so this never appears on a developer's Mac.
+      #
+      # Creating them first means the container writes into directories the host
+      # user already owns, which root is free to do.
+      - name: Pre-create the contract output directories
+        run: |
+          node -e '
+            const { include } = JSON.parse(require("fs").readFileSync(".lamingtonrc"));
+            process.stdout.write(include.map((f) => f.replace(/\.cpp$/, "")).join("\n"));
+          ' | while read -r name; do
+            mkdir -p "artifacts/compiled_contracts/IS_DEV/$name"
+          done
+
       # lamington pulls the prebuilt chain image when one has been published for
       # this eos/cdt/contracts combination and builds it otherwise, so there is
       # nothing to arrange here. Building costs several minutes but is correct.
