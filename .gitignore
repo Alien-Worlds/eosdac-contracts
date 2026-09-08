@@ -43,6 +43,12 @@ node_modules
 /artifacts/compiled_contracts/contracts/safemath
 /contracts/safemath/safemath.ts
 artifacts/compiled_contracts
+
+# Exception, tracked with `git add -f`: the compiled atomicassets fixture under
+# artifacts/compiled_contracts/IS_DEV/atomicassets/. A negation cannot be used
+# here because git will not re-include a file whose parent directory is
+# excluded. See the commit that added it for why that one artifact is in git
+# when every other build output is not.
 /debugging/tables.json
 /debugging/yarn-error.log
 /debugging/yarn.lock
