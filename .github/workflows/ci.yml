@@ -94,6 +94,20 @@ jobs:
 
       # The log is the only way to diagnose a failure after the fact, and a
       # failed run is exactly when it is wanted.
+      # Phase 3 measurement for Alien-Worlds/lamington#69: --user is meant to make
+      # the compiled artifacts owned by the invoking user, which the earlier
+      # mkdirp fix deliberately does not. Runs even on failure, since a red
+      # suite for unrelated reasons should not cost us the ownership data.
+      - name: Report artifact ownership
+        if: always()
+        run: |
+          echo "runner uid:gid = $(id -u):$(id -g)"
+          ls -ln artifacts/compiled_contracts/IS_DEV | head -5
+          echo "--- a compiled contract ---"
+          ls -ln artifacts/compiled_contracts/IS_DEV/dacescrow || true
+          echo "--- files not owned by the runner ---"
+          find artifacts/compiled_contracts -not -user "$(id -u)" -printf '%u %p\n' 2>/dev/null | head -10 || echo "none"
+
       - name: Upload the chain and test logs
         if: failure()
         uses: actions/upload-artifact@v4
