@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The contracts include headers from contract-shared-headers/contracts-common,
           # which is a submodule. Without this the checkout omits it and every contract
@@ -37,7 +37,7 @@ jobs:
           # either a deploy key or a token with access to it, supplied here.
           submodules: recursive
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           # Matches .tool-versions. Note .nvmrc says 18 and disagrees; these
           # should be reconciled, and until then this is the effective answer.
@@ -46,6 +46,13 @@ jobs:
           # caused the install failures below; it did not, they continued without
           # it. Left off regardless: it saves little against a ten minute run and
           # is one less thing between a red build and its cause.
+          #
+          # setup-node v5 and later turn caching on by default whenever
+          # package.json has a packageManager field, which this one does. That
+          # would quietly undo the decision above as a side effect of a version
+          # bump, so it is declined explicitly. Reintroducing the cache is worth
+          # doing, but as its own change that can be judged on its own result.
+          package-manager-cache: false
 
       # --frozen-lockfile makes this job fail rather than silently resolve
       # something new when yarn.lock and package.json disagree. That is the
@@ -59,12 +66,48 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile --non-interactive --network-concurrency 1
 
+      # No cache of artifacts/compiled_contracts here, though it looks like the
+      # obvious win: compiling is two and a half minutes of a twelve minute run
+      # and most pull requests touch no C++ at all. It was tried, on run
+      # 34594298990, and it does nothing. The cache restores correctly - the log
+      # reads "Cache restored successfully" - and lamington then recompiles all
+      # eleven contracts regardless, because of how it decides a contract is
+      # unchanged (contractCompiling.js):
+      #
+      #     prevModTime.getUTCMilliseconds() != this.modDate.getMilliseconds()
+      #
+      # That compares the milliseconds component of the two timestamps, 0 to 999,
+      # rather than the timestamps (Alien-Worlds/lamington#33). A fresh checkout
+      # stamps every source file with the checkout time, so the component is
+      # effectively random and a restored artifact is called stale almost every
+      # time. Worth revisiting once #33 is fixed, at which point this is a free
+      # two and a half minutes.
+
       # Fails the job early and legibly if the toolchain cannot even load,
       # rather than surfacing as a confusing failure inside the first test. A
       # lamington release once shipped requiring mocha without declaring it,
       # which this catches in seconds.
       - name: Verify the test runner loads
         run: yarn lamington test --help > /dev/null
+
+      # Two settings in .lamingtonrc are right for a developer at a terminal and
+      # wrong for CI, and lamington has no flag to override either from the
+      # command line (Alien-Worlds/lamington#38), so they are patched in place.
+      #
+      # bailOnFailure stops the suite at the first failure. Locally that saves you
+      # a wait you were about to interrupt anyway. In CI the runner is already
+      # paid for, and stopping early means a red build reports something like
+      # "17 passing" out of 563 and tells you nothing about whether the rest still
+      # pass - which is the first question anyone asks of a red build.
+      #
+      # The List reporter announces each test and then reports it, so it costs two
+      # lines per test: about 1100 lines of a 1600 line log. Spec carries the same
+      # names and durations on one line each, nested under their describes.
+      - name: Report every failure, not just the first
+        run: |
+          jq '.bailOnFailure = false | .reporter = "Spec"' .lamingtonrc > .lamingtonrc.ci
+          mv .lamingtonrc.ci .lamingtonrc
+          git diff --stat .lamingtonrc
 
       # lamington pulls the prebuilt chain image when one has been published for
       # this eos/cdt/contracts combination and builds it otherwise, so there is
@@ -99,7 +142,7 @@ jobs:
 
       - name: Upload the chain and test logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-logs
           path: |
