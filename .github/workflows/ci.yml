@@ -66,33 +66,22 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile --non-interactive --network-concurrency 1
 
-      # Compiling eleven contracts costs about two and a half minutes, and most
-      # pull requests do not touch a single line of C++. Restoring the artifacts
-      # lets lamington skip straight to deploying them.
+      # No cache of artifacts/compiled_contracts here, though it looks like the
+      # obvious win: compiling is two and a half minutes of a twelve minute run
+      # and most pull requests touch no C++ at all. It was tried, on run
+      # 34594298990, and it does nothing. The cache restores correctly - the log
+      # reads "Cache restored successfully" - and lamington then recompiles all
+      # eleven contracts regardless, because of how it decides a contract is
+      # unchanged (contractCompiling.js):
       #
-      # The key is computed here rather than left to lamington's own .mod.json
-      # staleness check, which ignores headers (Alien-Worlds/lamington#32) and so
-      # would happily serve a stale binary when only a header changed. Hashing the
-      # sources, the headers and .lamingtonrc ourselves means a header edit misses
-      # the cache and the contracts are rebuilt, without relying on the part of
-      # lamington that gets this wrong.
+      #     prevModTime.getUTCMilliseconds() != this.modDate.getMilliseconds()
       #
-      # .lamingtonrc is in the key because it carries the compiler flags, the cdt
-      # version and the list of contracts to build: the same sources compiled
-      # under a different cdt are not interchangeable. package.json is in it
-      # because it pins lamington, which is what invokes the compiler - the
-      # v1.4.0 to v1.5.3 upgrade changed how contracts are built, and artifacts
-      # from either side of that should not be served to the other.
-      #
-      # The atomicassets fixture is a prebuilt binary committed inside this very
-      # directory (see .gitignore). It is in the key because nothing else here
-      # would notice it changing, and the restore would then write a stale copy
-      # over the committed one.
-      - name: Restore the compiled contracts
-        uses: actions/cache@v6
-        with:
-          path: artifacts/compiled_contracts
-          key: contracts-${{ hashFiles('contracts/**', 'external_contracts/**', 'contract-shared-headers/**', '.lamingtonrc', 'package.json', 'artifacts/compiled_contracts/IS_DEV/atomicassets/**') }}
+      # That compares the milliseconds component of the two timestamps, 0 to 999,
+      # rather than the timestamps (Alien-Worlds/lamington#33). A fresh checkout
+      # stamps every source file with the checkout time, so the component is
+      # effectively random and a restored artifact is called stale almost every
+      # time. Worth revisiting once #33 is fixed, at which point this is a free
+      # two and a half minutes.
 
       # Fails the job early and legibly if the toolchain cannot even load,
       # rather than surfacing as a confusing failure inside the first test. A
