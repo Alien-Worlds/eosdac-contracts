@@ -66,26 +66,6 @@ jobs:
       - name: Verify the test runner loads
         run: yarn lamington test --help > /dev/null
 
-      # The compiler runs as root inside the container and creates the per
-      # contract output directories itself, leaving them owned by root on a Linux
-      # runner. lamington then writes .mod.json into them from the host as the
-      # unprivileged user and fails with EACCES. Docker Desktop maps ownership
-      # transparently, so this never appears on a developer's Mac.
-      #
-      # Creating them first means the container writes into directories the host
-      # user already owns, which root is free to do.
-      - name: Pre-create the contract output directories
-        run: |
-          node -e '
-            const { include } = JSON.parse(require("fs").readFileSync(".lamingtonrc"));
-            // Trailing newline matters: `while read` silently drops a final line
-            // without one, which left the last contract in the list without a
-            // directory and failed exactly one of the eleven.
-            include.forEach((f) => process.stdout.write(f.replace(/\.cpp$/, "") + "\n"));
-          ' | while read -r name; do
-            mkdir -p "artifacts/compiled_contracts/IS_DEV/$name"
-          done
-
       # lamington pulls the prebuilt chain image when one has been published for
       # this eos/cdt/contracts combination and builds it otherwise, so there is
       # nothing to arrange here. Building costs several minutes but is correct.
@@ -94,6 +74,26 @@ jobs:
 
       # The log is the only way to diagnose a failure after the fact, and a
       # failed run is exactly when it is wanted.
+      # Guards Alien-Worlds/lamington#69, which made this repository unbuildable on
+      # Linux: eosio-cpp ran as root in the container, so the output directory and
+      # the artifacts came back root-owned and lamington could not write its
+      # .mod.json build stamp. Fixed in lamington v1.5.2. This repo carried a
+      # pre-create workaround until that shipped.
+      #
+      # Kept as a standing assertion rather than deleted with the workaround: the
+      # failure is invisible on macOS, because Docker Desktop maps ownership
+      # through its VM, so CI is the only place a regression would ever show.
+      - name: Assert the build artifacts belong to the build user
+        run: |
+          strays=$(find artifacts/compiled_contracts -not -user "$(id -u)" -printf '%u %p\n' 2>/dev/null)
+          if [ -n "$strays" ]; then
+            echo "build artifacts are not owned by $(id -u), the user that ran the build:" >&2
+            echo "$strays" | head -20 >&2
+            echo "this is the lamington#69 regression; see the note above this step." >&2
+            exit 1
+          fi
+          echo "all build artifacts owned by $(id -u)"
+
       - name: Upload the chain and test logs
         if: failure()
         uses: actions/upload-artifact@v4
