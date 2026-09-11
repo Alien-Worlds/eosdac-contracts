@@ -84,6 +84,9 @@ jobs:
       # failure is invisible on macOS, because Docker Desktop maps ownership
       # through its VM, so CI is the only place a regression would ever show.
       - name: Assert the build artifacts belong to the build user
+        # Runs even when the suite is red. This asserts a property of the build,
+        # not of the tests, and a flaky test should not cost us the evidence.
+        if: always()
         run: |
           strays=$(find artifacts/compiled_contracts -not -user "$(id -u)" -printf '%u %p\n' 2>/dev/null)
           if [ -n "$strays" ]; then
