@@ -908,7 +908,6 @@ describe('Dacproposals', () => {
         });
         context('proposal_approve vote 2 ', async () => {
           it('should succeed', async () => {
-            await sleep(1000);
             await shared.dacproposals_contract.voteprop(
               propDacCustodians[0].name,
               newpropid,

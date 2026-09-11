@@ -447,7 +447,6 @@ describe('Stakevote', () => {
       });
       context('staking and unstaking repeatedly 2', async () => {
         it('should work', async () => {
-          await sleep(1000);
           await shared.dac_token_contract.transfer(
             shared.tokenIssuer.name,
             voter.name,
