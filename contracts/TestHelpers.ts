@@ -28,10 +28,6 @@ import * as chai from 'chai';
 import * as fs from 'fs';
 import * as path from 'path';
 import { rename, stat } from 'node:fs/promises';
-// Patches EOSManager.transact so repeated identical actions cannot collide into
-// the same transaction id. Imported here because every chain-using suite imports
-// this file. See contracts/uniqueTransactions.ts for why.
-import './uniqueTransactions';
 
 export var NUMBER_OF_CANDIDATES = 7;
 
