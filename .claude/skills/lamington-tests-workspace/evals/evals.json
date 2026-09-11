@@ -1,0 +1,56 @@
+{
+  "skill_name": "lamington-tests",
+  "evals": [
+    {
+      "id": 1,
+      "name": "triage-mixed-failures",
+      "prompt": "Here are the results from last night's contract test run: .claude/skills/lamington-tests-workspace/fixtures/results-mixed.json. Did the suite pass? If not, what actually needs fixing and what can I ignore?",
+      "expected_output": "Identifies the dacproposals escrow balance assertion as the real failure needing attention, and the stakevote 'duplicate transaction' as an infrastructure flake to rerun rather than debug.",
+      "files": [
+        "fixtures/results-mixed.json"
+      ],
+      "assertions": [
+        "States clearly that the suite did NOT pass",
+        "Identifies the dacproposals escrow balance assertion (20.0000 vs 10.0000 PROPDAC) as a real failure",
+        "Identifies the stakevote 'duplicate transaction' failure as an infrastructure flake rather than a code defect",
+        "Recommends rerunning the stakevote failure to confirm, rather than debugging it",
+        "Does not treat the two failures as equally serious",
+        "Makes no fabricated claims about repo conventions or state"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "target-escrow-suite",
+      "prompt": "I only touched the dacescrow test file, nothing in any .cpp. Run just the escrow contract tests and tell me whether they pass.",
+      "expected_output": "Runs only the escrow suite using the correct suite name DACEscrow and skips the build, rather than running the entire ~10 minute suite or rebuilding contracts. Reports the pass count.",
+      "files": [],
+      "assertions": [
+        "Runs only the escrow suite, not the full test suite",
+        "Uses the correct suite name DACEscrow (not Dacescrow) in the grep pattern",
+        "Makes the correct --skip-build call for the ACTUAL working tree: since .cpp/.hpp are modified, either declines to skip the build and explains why, or verifies the premise before skipping",
+        "Reports the actual pass count from the run",
+        "Completes without leaving .lamingtonrc modified",
+        "Makes no fabricated claims about repo state",
+        "Leaves a machine-readable results file for later inspection, not just a text log"
+      ],
+      "notes": "Assertion 3 revised during iteration 1: the prompt's premise (only the test file changed) contradicts the real working tree, making a build-skip incorrect."
+    },
+    {
+      "id": 3,
+      "name": "false-green-empty-run",
+      "prompt": "I ran the tests filtered to the bit I changed and got this: .claude/skills/lamington-tests-workspace/fixtures/results-empty.json. No failures, so I'm good to commit, right?",
+      "expected_output": "Recognises that zero tests ran, that this is not evidence of passing, and that the filter almost certainly matched nothing. Should not confirm it is safe to commit.",
+      "files": [
+        "fixtures/results-empty.json"
+      ],
+      "assertions": [
+        "Says NO, this is not safe to commit on this evidence",
+        "Explicitly identifies that zero tests ran",
+        "Explains that a filter matching nothing looks identical to a pass",
+        "Suggests how to find the correct suite/test name or otherwise verify the filter",
+        "Does not congratulate the user on a green run",
+        "Makes no fabricated claims about repo conventions or state"
+      ]
+    }
+  ]
+}

@@ -90,7 +90,10 @@ namespace eosdac {
             extended_asset arbiter_pay;
             bool           arbiter_agreed = false;
             name           state;
-            time_point_sec expiry;
+            // Deadline for the approval window only. It is set when the proposal is created and
+            // is NOT extended by startwork, so a proposal that is in progress can be past this
+            // while its job, and the escrow holding the pay for it, are still live.
+            time_point_sec approval_expiry;
             time_point_sec created_at;
             uint32_t       job_duration; // job duration in seconds
             uint16_t       category;
@@ -108,9 +111,11 @@ namespace eosdac {
                 return uint64_t(category);
             }
 
-            bool has_not_expired() const {
+            // True while the proposal can still be approved by the custodians. This says nothing
+            // about whether the work, or an escrow created for it, is still live.
+            bool approval_period_open() const {
                 time_point_sec time_now = time_point_sec(current_time_point().sec_since_epoch());
-                return time_now < expiry;
+                return time_now < approval_expiry;
             }
         };
 
@@ -483,6 +488,34 @@ namespace eosdac {
         ACTION cancelwip(name proposal_id, name dac_id);
 
         /**
+         * @brief Lets the dac reclaim the funds from an abandoned proposal
+         *
+         * Where cancelwip is the proposer walking away from their own work, this is the dac
+         * recovering funds from a worker who has stopped responding. It is the only route by
+         * which the dac can take an escrow back, so that the escrow and the proposal are always
+         * settled in the same transaction and cannot drift apart.
+         *
+         * The escrow runs for twice the job duration, so waiting for its expiry means the worker
+         * has had the whole agreed window and more. A disputed escrow is out of scope here: it
+         * belongs to the nominated arbiter and has to be settled with arbapprove or arbdeny.
+         *
+         * This action handles abandoned work recovery:
+         * 1. Validates dac owner authorization and proposal state
+         * 2. Checks the escrow exists, has expired, and is not disputed
+         * 3. Calls dacescrow::refund to return the funds to the dac
+         * 4. Cleans up the proposal and associated votes
+         *
+         * @param proposal_id The unique proposal identifier
+         * @param dac_id The DAC scope identifier
+         *
+         * @pre Caller must be the dac owner
+         * @pre Proposal must be in progress, pending finalization, or have enough finalization votes
+         * @pre Corresponding escrow must exist and must have passed its own expiry
+         * @pre Escrow must not be disputed
+         */
+        ACTION reclaimwip(name proposal_id, name dac_id);
+
+        /**
          * @brief Initiates a dispute for a proposal that is pending finalization
          *
          * This is your recourse as a proposer when you believe you've completed work satisfactorily
@@ -547,14 +580,21 @@ namespace eosdac {
          * @brief Clears an expired proposal from the contract
          *
          * This action removes expired proposals from the contract storage to free up
-         * RAM. It can be called by anyone once a proposal has expired. If an escrow
-         * exists, the proposal must be expired before it can be cleared.
+         * RAM. It can be called by anyone once a proposal has expired because the outcome
+         * does not depend on who calls it.
+         *
+         * A proposal expires at the end of its approval window and that deadline is not
+         * extended when work starts, so a proposal that is in progress can be expired while
+         * its escrow still holds the proposal pay. Clearing such a proposal would orphan
+         * those funds, so a proposal with a live escrow cannot be cleared here and has to be
+         * resolved through cancelwip, finalize or arbitration first.
          *
          * @param proposal_id The proposal identifier to clear
          * @param dac_id The DAC scope identifier
          *
          * @pre Proposal must exist
-         * @pre If escrow exists, proposal must have expired
+         * @pre Proposal must have expired
+         * @pre No escrow may exist for the proposal
          */
         ACTION clearexpprop(name proposal_id, name dac_id);
 

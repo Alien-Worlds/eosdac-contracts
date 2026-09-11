@@ -33,7 +33,8 @@ node_modules
 /artifacts/compiled_contracts/contracts/daccustodian/daccustodian.wasm
 /artifacts/compiled_contracts/contracts/daccustodian/daccustodian.abi
 /yarn-error.log
-/yarn.lock
+# yarn.lock is committed: it is the only thing that makes an install
+# reproducible across machines and CI. See .github/workflows/ci.yml.
 .DS_Store
 /artifacts/compiled_contracts/contracts/msigworlds/msigworlds.abi
 /artifacts/compiled_contracts/contracts/msigworlds/msigworlds.wasm
@@ -42,6 +43,12 @@ node_modules
 /artifacts/compiled_contracts/contracts/safemath
 /contracts/safemath/safemath.ts
 artifacts/compiled_contracts
+
+# Exception, tracked with `git add -f`: the compiled atomicassets fixture under
+# artifacts/compiled_contracts/IS_DEV/atomicassets/. A negation cannot be used
+# here because git will not re-include a file whose parent directory is
+# excluded. See the commit that added it for why that one artifact is in git
+# when every other build output is not.
 /debugging/tables.json
 /debugging/yarn-error.log
 /debugging/yarn.lock
@@ -49,3 +56,9 @@ artifacts/compiled_contracts
 /debugging/tables_daccustodian.json
 .magic_key_value
 lib
+
+# Lamington test run artifacts (results json + console logs)
+.lamington/
+
+# Skill eval run outputs (regenerated per iteration)
+.claude/skills/*-workspace/iteration-*/

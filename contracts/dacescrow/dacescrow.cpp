@@ -76,9 +76,11 @@ namespace eosdac {
     }
 
     ACTION dacescrow::approve(name key, name approver, name dac_id) {
-        if (!has_auth(get_self())) {
-            require_auth(approver);
-        }
+        // Settlement is only reachable through the proposals contract, which sends this as
+        // escrow@approve. Letting the arbiter or sender call it directly would settle the
+        // escrow while the proposal that tracks it stayed behind, and the proposals contract
+        // treats the presence of this row as the truth about whether work is still live.
+        require_auth(get_self());
 
         auto escrows = escrows_table(get_self(), dac_id.value);
         auto esc_itr = escrows.find(key.value);
@@ -105,9 +107,8 @@ namespace eosdac {
     }
 
     ACTION dacescrow::disapprove(name key, name disapprover, name dac_id) {
-        if (!has_auth(get_self())) {
-            require_auth(disapprover);
-        }
+        // See approve: only the proposals contract may settle an escrow.
+        require_auth(get_self());
 
         auto escrows = escrows_table(get_self(), dac_id.value);
         auto esc_itr = escrows.find(key.value);
@@ -140,6 +141,10 @@ namespace eosdac {
 
         check(0 == esc_itr->receiver_pay.quantity.amount, "Amount is not zero, this escrow is locked down");
 
+        // Only the receiver pay has to be zero to cancel, so an escrow that was funded for the
+        // arbiter alone can reach here. Return that too rather than stranding it.
+        refund_arbiter_pay(esc_itr);
+
         escrows.erase(esc_itr);
     }
 
@@ -152,12 +157,11 @@ namespace eosdac {
         auto esc_itr = escrows.find(key.value);
         check(esc_itr != escrows.end(), "Could not find escrow with that index");
 
-        if (!has_auth(esc_itr->receiver) && !has_auth(get_self())) {
-            require_auth(esc_itr->sender);
-
-            time_point_sec time_now = time_point_sec(eosio::current_time_point());
-            check(time_now >= esc_itr->expires, "Escrow has not expired");
-        }
+        // The receiver used to be able to refund at any time and the sender after expiry.
+        // Both erased a funded escrow without touching the proposal, so recovery now goes
+        // through the proposals contract: cancelwip for the proposer, reclaimwip for the dac
+        // once this escrow has expired. Those check the expiry that used to be checked here.
+        require_auth(get_self());
 
         check(esc_itr->receiver_pay.quantity.amount > 0, "This has not been initialized with a transfer");
         check(!esc_itr->disputed,
@@ -167,6 +171,11 @@ namespace eosdac {
             make_tuple(_self, esc_itr->sender, esc_itr->receiver_pay.quantity, esc_itr->memo))
             .send();
 
+        // The arbiter fee is only earned by ruling on a dispute. A refund means no ruling
+        // happened, so it goes back to the dac with the rest instead of being stranded in
+        // this contract with nothing left referring to it once the row is erased.
+        refund_arbiter_pay(esc_itr);
+
         escrows.erase(esc_itr);
     }
 
@@ -175,15 +184,24 @@ namespace eosdac {
         auto esc_itr = escrows.find(key.value);
         check(esc_itr != escrows.end(), "Could not find escrow with that index");
 
-        if (!has_auth(get_self())) {
-            require_auth(esc_itr->receiver);
-        }
+        // Locking is part of the proposal dispute flow, so it arrives from there. A receiver
+        // locking the escrow on its own would leave the proposal un-disputed and block the
+        // arbiter, who can only rule once both sides agree the proposal is in dispute.
+        require_auth(get_self());
 
         check(esc_itr->receiver_pay.quantity.amount > 0, "This has not been initialized with a transfer");
 
         escrows.modify(esc_itr, same_payer, [&](escrow_info &e) {
             e.disputed = true;
         });
+    }
+
+    void dacescrow::refund_arbiter_pay(const escrows_table::const_iterator esc_itr) {
+        if (esc_itr->arbiter_pay.quantity.amount > 0) {
+            eosio::action(eosio::permission_level{_self, "active"_n}, esc_itr->arbiter_pay.contract, "transfer"_n,
+                make_tuple(_self, esc_itr->sender, esc_itr->arbiter_pay.quantity, esc_itr->memo))
+                .send();
+        }
     }
 
     void dacescrow::pay_arbiter(const escrows_table::const_iterator esc_itr) {

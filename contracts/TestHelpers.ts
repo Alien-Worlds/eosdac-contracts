@@ -662,15 +662,37 @@ export class SharedTestObjects {
 
   private async add_escrow_contract_permissions() {
     console.log('adding approve and dispute to escrow');
-    // Use owner permission since active permission has already been changed to contract code
+    // The escrow contract only accepts approve/disapprove/refund/dispute from itself, and the
+    // proposals contract supplies that by sending them as escrow@approve. In production this
+    // permission holds the proposals contract's eosio.code authority and nothing else.
+    //
+    // The escrow account's own key is added alongside it here so that dacescrow.test.ts can
+    // exercise the escrow contract in isolation, without standing up a whole proposal first.
+    // That is a test convenience only: do NOT mirror the key weight on chain, or the escrow
+    // account's key alone could settle escrows and the lockdown would be worthless.
     await debugPromise(
       UpdateAuth.execUpdateAuth(
         this.dacescrow_contract.account.owner,
         this.dacescrow_contract.account.name,
         'approve',
         'active',
-        UpdateAuth.AuthorityToSet.forContractCode(
-          this.dacproposals_contract.account
+        UpdateAuth.AuthorityToSet.explicitAuthorities(
+          1,
+          [
+            {
+              permission: {
+                actor: this.dacproposals_contract.account.name,
+                permission: 'eosio.code',
+              },
+              weight: 1,
+            },
+          ],
+          [
+            {
+              key: this.dacescrow_contract.account.publicKey!,
+              weight: 1,
+            },
+          ]
         )
       ),
       'add approve permission to escrow'

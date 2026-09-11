@@ -93,7 +93,7 @@ The intent of undelegateca is to remove delegation an active custodian's vote to
 - **dac_id** is an account name representing the DAC for this action
 
 **INTENT:**
-The intent of clearexpprop is to remove an expired proposal. This is only allowed if the proposal has expired.s
+The intent of clearexpprop is to remove an expired proposal and its votes in order to free up RAM. Any account may call it since the outcome does not depend on the caller, but it is only allowed after the proposal has expired and only while no escrow exists for the proposal. A proposal that still has a live escrow must be resolved with cancelwip, finalize or arbitration first so that the escrowed funds are not orphaned.
 
 <h1 class="contract">
     updpropvotes
@@ -175,6 +175,20 @@ The intent of finalize is to trigger the transfer of funds to the worker from th
 
 **INTENT:**
 The intent of cancel is to cancel a proposal.
+
+ <h1 class="contract">
+ reclaimwip
+ </h1>
+
+## ACTION: reclaimwip
+
+**PARAMETERS:**
+
+- **proposal_id** is an integer id for an existing proposal with work in progress.
+- **dac_id** is an account name representing the DAC for this action
+
+**INTENT:**
+The intent of reclaimwip is to allow the DAC to recover the funds from a proposal that the worker has abandoned. It can only be called by the DAC owner, only once the escrow for the proposal has passed its own expiry, which is twice the agreed job duration, and only while the escrow is not disputed. A disputed escrow belongs to the nominated arbiter and must be settled with arbapprove or arbdeny instead. On success the escrowed funds are returned to the DAC and the proposal and its votes are removed from the contract.
 
  <h1 class="contract">
  comment

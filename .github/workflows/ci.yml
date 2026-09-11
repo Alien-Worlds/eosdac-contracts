@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# Nothing here needs write access to the repository.
+permissions:
+  contents: read
+
+# A newer push to the same branch makes an in-flight run redundant. These runs
+# take about ten minutes each, so cancelling matters more than usual.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build contracts and run tests
+    runs-on: ubuntu-latest
+    # The suite compiles eleven contracts and runs 563 integration tests against
+    # a real nodeos in Docker. Ten minutes is typical; the ceiling is here to
+    # catch a hang rather than to bound normal work.
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The contracts include headers from contract-shared-headers/contracts-common,
+          # which is a submodule. Without this the checkout omits it and every contract
+          # that includes it fails to compile with "file not found".
+          #
+          # checkout rewrites the SSH URL in .gitmodules to token-authenticated HTTPS,
+          # so this works as long as the submodule repository is readable by the token.
+          # GITHUB_TOKEN is scoped to this repository alone, so a private submodule needs
+          # either a deploy key or a token with access to it, supplied here.
+          submodules: recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches .tool-versions. Note .nvmrc says 18 and disagrees; these
+          # should be reconciled, and until then this is the effective answer.
+          node-version: '20.18.2'
+          # No dependency cache here. It was first removed on the theory that it
+          # caused the install failures below; it did not, they continued without
+          # it. Left off regardless: it saves little against a ten minute run and
+          # is one less thing between a red build and its cause.
+
+      # --frozen-lockfile makes this job fail rather than silently resolve
+      # something new when yarn.lock and package.json disagree. That is the
+      # entire value of committing the lockfile: without it CI installs whatever
+      # resolves today, and a dependency can drift under everyone at once.
+      # --network-concurrency 1 works around a yarn v1 race where parallel
+      # fetches corrupt its own cache, failing with ENOENT on .yarn-metadata.json
+      # or .yarn-tarball.tgz for an arbitrary package - a different one each run,
+      # which is what distinguishes it from a genuine problem with a dependency.
+      # It costs some install time and buys a deterministic install.
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile --non-interactive --network-concurrency 1
+
+      # Fails the job early and legibly if the toolchain cannot even load,
+      # rather than surfacing as a confusing failure inside the first test. A
+      # lamington release once shipped requiring mocha without declaring it,
+      # which this catches in seconds.
+      - name: Verify the test runner loads
+        run: yarn lamington test --help > /dev/null
+
+      # The compiler runs as root inside the container and creates the per
+      # contract output directories itself, leaving them owned by root on a Linux
+      # runner. lamington then writes .mod.json into them from the host as the
+      # unprivileged user and fails with EACCES. Docker Desktop maps ownership
+      # transparently, so this never appears on a developer's Mac.
+      #
+      # Creating them first means the container writes into directories the host
+      # user already owns, which root is free to do.
+      - name: Pre-create the contract output directories
+        run: |
+          node -e '
+            const { include } = JSON.parse(require("fs").readFileSync(".lamingtonrc"));
+            // Trailing newline matters: `while read` silently drops a final line
+            // without one, which left the last contract in the list without a
+            // directory and failed exactly one of the eleven.
+            include.forEach((f) => process.stdout.write(f.replace(/\.cpp$/, "") + "\n"));
+          ' | while read -r name; do
+            mkdir -p "artifacts/compiled_contracts/IS_DEV/$name"
+          done
+
+      # lamington pulls the prebuilt chain image when one has been published for
+      # this eos/cdt/contracts combination and builds it otherwise, so there is
+      # nothing to arrange here. Building costs several minutes but is correct.
+      - name: Build contracts and run the full suite
+        run: yarn test
+
+      # The log is the only way to diagnose a failure after the fact, and a
+      # failed run is exactly when it is wanted.
+      - name: Upload the chain and test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: |
+            .lamington/
+          retention-days: 7
+          if-no-files-found: ignore
