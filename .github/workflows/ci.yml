@@ -112,9 +112,6 @@ jobs:
       # lamington pulls the prebuilt chain image when one has been published for
       # this eos/cdt/contracts combination and builds it otherwise, so there is
       # nothing to arrange here. Building costs several minutes but is correct.
-      #
-      # Contracts already restored from the cache are left alone; only what
-      # changed is recompiled.
       - name: Build contracts and run the full suite
         run: yarn test
 
