@@ -96,10 +96,23 @@ describe('Daccustodian AvgVoteTimeStampFutureBug', () => {
       })
     ).rows[0];
 
-    // avg_vote_time_stamp should not be in the future
+    // avg_vote_time_stamp should not be in the future.
+    //
+    // Tolerated by one block, deliberately. This compares a chain timestamp to
+    // the host's clock, and nodeos does not owe us any relationship between the
+    // two: a block's timestamp is its 500ms slot time, not the moment the
+    // transaction was accepted, so the head block can legitimately read a
+    // fraction of a second ahead of Date.now(). On a CI runner, which is faster
+    // and less loaded than a laptop, that is routine - this assertion failed by
+    // 62ms there while passing locally every time.
+    //
+    // The regression being guarded against pushed the timestamp days into the
+    // future, so half a second of slack costs nothing. Do not remove it as
+    // slop; without it this test fails on timing rather than on behaviour.
+    const BLOCK_INTERVAL_MS = 500;
     chai
       .expect(candRow.avg_vote_time_stamp.getTime())
-      .to.be.at.most(Date.now());
+      .to.be.at.most(Date.now() + BLOCK_INTERVAL_MS);
 
     // total_vote_power should now be positive (voter2's weight)
     chai.expect(Number(candRow.total_vote_power)).to.be.greaterThan(0);
