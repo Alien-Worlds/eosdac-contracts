@@ -78,7 +78,6 @@ describe('Msigworlds', () => {
     });
     context('add existing action', async () => {
       it('should fail', async () => {
-        await sleep(1000); // to avoid duplicate tx id
         await assertEOSErrorIncludesMessage(
           msigworlds.blockaction(eosioToken.account.name, 'close', dac_id, {
             from: msigworlds.account,

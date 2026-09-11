@@ -848,7 +848,6 @@ describe('Daccustodian', () => {
           });
           context('with duplicate user added', async () => {
             it('should fail', async () => {
-              await sleep(1000);
               await assertEOSErrorIncludesMessage(
                 shared.daccustodian_contract.addwl(newUser1.name, 1, dacId, {
                   from: shared.daccustodian_contract.account,
