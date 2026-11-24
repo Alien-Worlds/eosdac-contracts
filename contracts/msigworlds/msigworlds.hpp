@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include <eosio/binary_extension.hpp>
 #include <eosio/eosio.hpp>
 #include <eosio/ignore.hpp>
@@ -88,6 +90,49 @@ struct [[eosio::table("blockedactns"), eosio::contract("msigworlds")]] blocked_a
 typedef eosio::multi_index<"blockedactns"_n, blocked_action,
     indexed_by<"contractns"_n, const_mem_fun<blocked_action, uint128_t, &blocked_action::contract_and_actions>>>
     blocked_actions;
+
+/**
+ * A union dac is a dac whose proposals are approved by the custodians of several other dacs rather
+ * than by its own.
+ *
+ * The membership is fixed for the life of the union, so it is a compile-time constant rather than
+ * a table: there is no action to add or remove a member, no RAM to pay, and no half-registered
+ * state to guard against. Changing it is a contract upgrade, which is the intended ceremony.
+ *
+ * The approval threshold is deliberately *not* here. It lives in the union account's permission on
+ * chain and is resolved by check_transaction_authorization, the same as for every other dac. This
+ * list only tells the contract which scopes the union's approvers act in, so that it can read
+ * their invalidations and their blocked actions.
+ *
+ * A dac_id absent from this list is an ordinary dac and every union lookup below is a no-op.
+ */
+static constexpr size_t MAX_UNION_MEMBERS = 6;
+
+struct union_dac {
+    eosio::name dac_id;
+    // Trailing entries may be empty, so a union can have fewer than MAX_UNION_MEMBERS members.
+    // Every loop below skips an empty entry.
+    std::array<eosio::name, MAX_UNION_MEMBERS> member_dac_ids;
+};
+
+static constexpr std::array<union_dac, 2> UNION_DACS{{
+    {"synthar"_n, {"eyekeunn"_n, "kavianunn"_n, "magorunn"_n, "naronunn"_n, "neriunn"_n, "velesunn"_n}},
+    // A single member union over the testa dac, so that the union paths can be exercised on chain
+    // against a dac we control. The six real union daos cannot be used for that.
+    {"testaunn"_n, {"testa"_n}},
+}};
+
+/**
+ * The union `dac_id` belongs to, or nullptr when it is an ordinary dac.
+ */
+inline const union_dac *union_for_dac(const eosio::name dac_id) {
+    for (const auto &candidate : UNION_DACS) {
+        if (candidate.dac_id == dac_id) {
+            return &candidate;
+        }
+    }
+    return nullptr;
+}
 
 TABLE serial {
     uint64_t id = 0;
@@ -245,17 +290,64 @@ class [[eosio::contract("msigworlds")]] multisig : public eosio::contract {
     uint64_t next_id(name dac_id);
     void     _unapprove(name proposal_name, permission_level level, name dac_id, bool throw_if_not_previously_approved);
 
+    /**
+     * A union dac has no token of its own and therefore no member register, so membership of the
+     * union is membership of any one of its member dacs. Note that the union's own MSIGOWNED
+     * account cannot stand in here: its permission is the union threshold itself, so it is unable
+     * to sign a propose until the thing being proposed has already been approved.
+     */
     void assertValidMember(const name proposer, const name dac_id) {
         const auto dac                 = eosdac::dacdir::dac_for_id(dac_id);
         const auto referendum_contract = dac.account_for_type_maybe(eosdac::dacdir::REFERENDUM);
 
-        if (referendum_contract) {
-            if (proposer != *referendum_contract) {
-                eosdac::assertValidMember(proposer, dac_id);
-            }
-        } else {
-            eosdac::assertValidMember(proposer, dac_id);
+        if (referendum_contract && proposer == *referendum_contract) {
+            return;
         }
+
+        const auto union_dac = union_for_dac(dac_id);
+        if (union_dac) {
+            for (const auto &member_dac_id : union_dac->member_dac_ids) {
+                if (member_dac_id && isValidMember(proposer, member_dac_id)) {
+                    return;
+                }
+            }
+            check(false, "ERR::MUST_BE_UNION_MEMBER::%s is not a member of any member dac of %s.", proposer, dac_id);
+        }
+
+        eosdac::assertValidMember(proposer, dac_id);
+    }
+
+    /**
+     * The non-throwing form of eosdac::assertValidMember, needed because a union proposer is valid
+     * if they are a member of *any* member dac, which cannot be expressed with asserts.
+     */
+    bool isValidMember(const name member, const name dac_id) {
+        // Looked up without asserting, so that a member dac missing from the directory makes this
+        // one member not count rather than blocking the union's proposals entirely.
+        const auto dactable = eosdac::dacdir::dac_table{DACDIRECTORY_CONTRACT, DACDIRECTORY_CONTRACT.value};
+        const auto dac      = dactable.find(dac_id.value);
+        if (dac == dactable.end()) {
+            return false;
+        }
+        const auto token_contract = dac->symbol.get_contract();
+
+        const auto reg_members  = eosdac::regmembers{token_contract, dac_id.value};
+        const auto member_terms = eosdac::memterms{token_contract, dac_id.value};
+
+        const auto regmem = reg_members.find(member.value);
+        if (regmem == reg_members.end() || regmem->agreedterms == 0 || member_terms.begin() == member_terms.end()) {
+            return false;
+        }
+
+        return (--member_terms.end())->version == regmem->agreedterms;
+    }
+
+    void assertActionNotBlocked(const name dac_id, const eosio::action &act) {
+        blocked_actions action_blacklist(get_self(), dac_id.value);
+        auto            blacklist_idx = action_blacklist.get_index<"contractns"_n>();
+
+        auto iter = blacklist_idx.find((uint128_t)act.account.value << 64 | (uint128_t)act.name.value);
+        check(iter == blacklist_idx.end(), "proposal contains some blocked actions.");
     }
 
     void assertValidCustodian(const name proposer, const name dac_id) {

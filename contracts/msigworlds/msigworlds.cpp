@@ -9,6 +9,38 @@ using namespace eosio;
 transaction_header get_trx_header(const char *ptr, size_t sz);
 bool trx_is_authorized(const std::vector<permission_level> &approvals, const std::vector<char> &packed_trx);
 
+/**
+ * True if `approval` was superseded by the account invalidating itself in `scope` after it was
+ * given.
+ */
+bool is_invalidated_in_scope(name self, name scope, const approval &approval) {
+    invalidations invalidations_table(self, scope.value);
+    auto          iter = invalidations_table.find(approval.level.actor.value);
+    return iter != invalidations_table.end() && approval.time <= iter->last_invalidation_time;
+}
+
+/**
+ * An approval on a union dac's proposal is given by a custodian of one of the member dacs, so the
+ * account's own dac is where it would sensibly call `invalidate`. Honouring only the proposal's own
+ * scope would let a custodian invalidate a compromised key and still have their stale approvals
+ * counted against the union. Check the member scopes too; for an ordinary dac the member list is
+ * empty and this is just the proposal's own scope.
+ */
+bool is_invalidated(name self, name dac_id, const approval &approval) {
+    if (is_invalidated_in_scope(self, dac_id, approval)) {
+        return true;
+    }
+    const auto union_dac = union_for_dac(dac_id);
+    if (union_dac) {
+        for (const auto &member_dac_id : union_dac->member_dac_ids) {
+            if (member_dac_id && is_invalidated_in_scope(self, member_dac_id, approval)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 template <typename Function>
 std::vector<permission_level> get_approvals_and_adjust_table(
     name self, name proposal_name, Function &&table_op, name dac_id) {
@@ -17,12 +49,9 @@ std::vector<permission_level> get_approvals_and_adjust_table(
         approval_table.require_find(proposal_name.value, "ERR::NO_APPROVALS_FOUND::No approvals were found.");
     std::vector<permission_level> approvals_vector;
 
-    invalidations invalidations_table(self, dac_id.value);
-
     approvals_vector.reserve(approval_table_iter->provided_approvals.size());
     for (const auto &permission : approval_table_iter->provided_approvals) {
-        auto iter = invalidations_table.find(permission.level.actor.value);
-        if (iter == invalidations_table.end() || iter->last_invalidation_time < permission.time) {
+        if (!is_invalidated(self, dac_id, permission)) {
             approvals_vector.push_back(permission.level);
         }
     }
@@ -50,12 +79,19 @@ void multisig::propose(name proposer, name proposal_name, std::vector<permission
     ds >> actions;
     check(!actions.empty(), "not allowed to `propose` a transaction with empty actions");
 
-    blocked_actions action_blacklist(get_self(), dac_id.value);
-    auto            blacklist_idx = action_blacklist.get_index<"contractns"_n>();
-
+    // A union dac's own blocklist starts empty, so checking only its scope would let a union
+    // proposal carry actions that every one of its member dacs has blocked. The member dacs are
+    // checked as well. For an ordinary dac the member list is empty and only its own scope applies.
+    const auto union_dac = union_for_dac(dac_id);
     for (const action &act : actions) {
-        auto iter = blacklist_idx.find((uint128_t)act.account.value << 64 | (uint128_t)act.name.value);
-        check(iter == blacklist_idx.end(), "proposal contains some blocked actions.");
+        assertActionNotBlocked(dac_id, act);
+        if (union_dac) {
+            for (const auto &member_dac_id : union_dac->member_dac_ids) {
+                if (member_dac_id) {
+                    assertActionNotBlocked(member_dac_id, act);
+                }
+            }
+        }
     }
 
     proposals proptable(get_self(), dac_id.value);
